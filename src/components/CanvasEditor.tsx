@@ -293,6 +293,8 @@ export function CanvasEditor() {
   };
 
   const handleElementMouseDown = (e: React.MouseEvent, element: CanvasElement) => {
+    // Allow Middle Click (Button 1) to bubble to container for Pan
+    if (e.button === 1) return;
     e.stopPropagation();
 
     if (activeTool === "connect") {
@@ -330,12 +332,9 @@ export function CanvasEditor() {
   };
 
   const handleMouseDownRaw = (e: React.MouseEvent) => {
-      // Pan Logic (Offset based)
-      // Visual = (World * Zoom) + Offset
-      // Offset = Screen - (World * Zoom)
-      // We want to keep (Screen - Offset) constant relative to mouse movement?
-      // Pan moves the offset directly. 1px mouse = 1px offset.
-      if (activeTool === 'pan' || (activeTool === 'select' && e.button === 1)) { 
+      // Pan Logic: Active Tool OR Middle Click (Button 1)
+      if (activeTool === 'pan' || e.button === 1) { 
+          e.preventDefault();
           setIsDragging(true);
           // Store 'Screen - Offset' as the anchor
           panStartRef.current = { x: e.clientX - viewOffset.x, y: e.clientY - viewOffset.y };
@@ -344,32 +343,18 @@ export function CanvasEditor() {
 
   const handleWheel = (e: React.WheelEvent) => {
       // Zoom on Ctrl+Wheel OR simply Wheel (since no vertical scroll)
-      // For best UX in "infinite canvas", wheel usually zooms or vertical pans.
-      // Given user request "scroll to zoom", we'll default to zoom.
-      
-      // Prevent browser zoom if ctrl?
-      // Actually prevent default if we handle it.
-      
       const zoomSensitivity = -0.001;
       const delta = e.deltaY * zoomSensitivity;
-      
-      // If user holds Shift, maybe horizontal pan? For now, just Zoom.
       
       const rect = canvasRef.current!.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
-      // Current World Pos under Mouse
-      // Screen = (World * Zoom) + Offset
-      // World = (Screen - Offset) / Zoom
       const worldX = (mouseX - viewOffset.x) / zoom;
       const worldY = (mouseY - viewOffset.y) / zoom;
       
       const newZoom = Math.min(Math.max(zoom + delta, 0.1), 5); // 0.1x to 5x
       
-      // New Offset to keep World Point under Mouse
-      // Screen = (World * NewZoom) + NewOffset
-      // NewOffset = Screen - (World * NewZoom)
       const newOffset = {
           x: mouseX - (worldX * newZoom),
           y: mouseY - (worldY * newZoom)
@@ -380,8 +365,8 @@ export function CanvasEditor() {
   };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (activeTool === 'pan' && isDragging && panStartRef.current) {
-        // Pan logic is purely Translation, zoom independent for the Offset itself (Offset is in Screen pixels)
+    // Check if handling Pan (either via Tool or Middle Click)
+    if (isDragging && panStartRef.current) {
         setViewOffset({
             x: e.clientX - panStartRef.current.x,
             y: e.clientY - panStartRef.current.y
@@ -424,7 +409,8 @@ export function CanvasEditor() {
   const handleMouseUp = useCallback(async () => {
     setDragTargetId(null);
     
-    if (activeTool === 'pan' && isDragging) {
+    // Check if finishing Pan
+    if (isDragging && panStartRef.current) {
         setIsDragging(false);
         panStartRef.current = null;
         return;
@@ -610,7 +596,7 @@ export function CanvasEditor() {
   }, [activeCanvas, localContent]);
 
   const getCursor = () => {
-      if (activeTool === 'pan') return isDragging ? 'grabbing' : 'grab';
+      if (activeTool === 'pan' || (isDragging && panStartRef.current)) return isDragging ? 'grabbing' : 'grab';
       switch(activeTool) {
           case 'connect': return 'crosshair';
           case 'card':
@@ -708,7 +694,7 @@ export function CanvasEditor() {
            style={{ cursor: getCursor() }}>
            
            {/* Transformed Content */}
-           <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${zoom})`, transformOrigin: '0 0', willChange: 'transform', width: '100%', height: '100%', pointerEvents: activeTool === 'pan' ? 'none' : 'auto' }} className={activeTool === 'pan' ? '' : 'pointer-events-auto'}>
+           <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${zoom})`, transformOrigin: '0 0', willChange: 'transform', width: '100%', height: '100%', pointerEvents: (activeTool === 'pan' || (isDragging && panStartRef.current)) ? 'none' : 'auto' }} className={(activeTool === 'pan' || (isDragging && panStartRef.current)) ? '' : 'pointer-events-auto'}>
                
                 {/* Connections */}
                 <svg className="absolute top-0 left-0 overflow-visible w-full h-full pointer-events-none z-0">
