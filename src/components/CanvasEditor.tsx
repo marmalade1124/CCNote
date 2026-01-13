@@ -1000,6 +1000,7 @@ export function CanvasEditor() {
                         if (tool === 'image') {
                             fileInputRef.current?.click();
                         } else {
+                            if (activeTool === 'pan' && tool !== 'pan') setIsDragging(false); // Fix stuck pan
                             setActiveTool(tool as any); 
                         }
                     }}
