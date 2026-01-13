@@ -22,7 +22,7 @@ interface CardContent {
 function parseCardContent(content: string): CardContent {
   const parts = content.split("||");
   return {
-    title: parts[0] || "Untitled",
+    title: parts[0], // Allow empty string
     description: parts[1] || "",
   };
 }
@@ -41,7 +41,7 @@ function parseFolderContent(content: string): FolderContent {
     const parsed = JSON.parse(content);
     if (typeof parsed === 'object' && parsed !== null) {
         return { 
-            title: parsed.title || "Untitled Group", 
+            title: parsed.title, // Allow empty 
             collapsed: !!parsed.collapsed 
         };
     }
@@ -155,6 +155,7 @@ export function CanvasEditor() {
       fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title';
       query: string;
       index: number;
+      menuType: 'slash' | 'wiki'; // New field for differentiating menus
   } | null>(null);
 
   const [viewMode, setViewMode] = useState<'editor' | 'graph'>('editor');
@@ -236,12 +237,29 @@ export function CanvasEditor() {
            else if (commandMenu.fieldType === 'image_title') currentText = parseImageContent(content).title;
            else if (commandMenu.fieldType === 'card_title') currentText = parseCardContent(content).title;
 
+           // Detect Slash Command
            const lastSlashIndex = currentText.lastIndexOf('/');
-           if (lastSlashIndex === -1) {
-               setCommandMenu(null); // Close if slash gone
+           // Detect Wiki Link
+           const lastWikiIndex = currentText.lastIndexOf('[[');
+           
+           // Determine which one is closer to end (active)
+           if (lastWikiIndex > lastSlashIndex && lastWikiIndex !== -1) {
+                // Wiki Mode
+                setCommandMenu(prev => prev ? { ...prev, menuType: 'wiki', query: currentText.slice(lastWikiIndex + 2) } : null);
+           } else if (lastSlashIndex !== -1) {
+                // Slash Mode 
+                setCommandMenu(prev => prev ? { ...prev, menuType: 'slash', query: currentText.slice(lastSlashIndex + 1) } : null);
            } else {
-               setCommandMenu(prev => prev ? { ...prev, query: currentText.slice(lastSlashIndex + 1) } : null);
+               setCommandMenu(null); 
            }
+    } else {
+        // Also check if we SHOULD open it (e.g. typing '[[' fresh)
+        // ... Logic for fresh opening needs to be in key handler or here? 
+        // Let's rely on KeyHandler for OPENING, but this listener for UPDATING/CLOSING.
+        // Actually, for Wiki Link, it effectively acts like a slash command.
+        
+        // Let's duplicate the check here for "Auto-Open" on type? 
+        // No, keep it clean. 'handleInputKeyDown' triggers OPEN.
     }
 
     debouncedUpdateContent(elementId, content);
@@ -297,8 +315,28 @@ export function CanvasEditor() {
                elementId,
                fieldType,
                query: '',
-               index: 0
+               index: 0,
+               menuType: 'slash'
            });
+       }
+
+       // Trigger '[['
+       if (e.key === '[') {
+            const target = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
+            if (currentContent.endsWith('[')) { 
+                const rect = target.getBoundingClientRect();
+                activeCommandSetter.current = setContent;
+                setCommandMenu({
+                    visible: true,
+                    x: rect.left + 20,
+                    y: rect.bottom - 40,
+                    elementId,
+                    fieldType,
+                    query: '',
+                    index: 0,
+                    menuType: 'wiki'
+                });
+            }
        }
   };
 
@@ -329,8 +367,8 @@ export function CanvasEditor() {
 
       if (cmd) {
          const q = commandMenu.query;
-         // Scan for last slash + query
-         const matchStr = '/' + q;
+         // Determine search string based on type
+         const matchStr = commandMenu.menuType === 'wiki' ? '[[' + q : '/' + q;
          const idx = currentText.lastIndexOf(matchStr);
          if (idx !== -1) {
              const newText = currentText.slice(0, idx) + cmd.insert + currentText.slice(idx + matchStr.length);
@@ -341,6 +379,30 @@ export function CanvasEditor() {
   };
 
   const getFilteredCommands = (query: string) => {
+      if (commandMenu?.menuType === 'wiki') {
+          // Wiki Link Suggestions
+          const nodes = activeCanvas?.elements.map(el => {
+              // Parse title based on type
+              let label = "Unknown";
+              if (el.type === 'card') label = parseCardContent(el.content).title;
+              else if (el.type === 'image') label = parseImageContent(el.content).title;
+              else if (el.type === 'folder') label = parseFolderContent(el.content).title;
+              else if (el.type === 'text' || el.type === 'sticky') label = el.content.slice(0, 20); // First 20 chars
+              
+              if (!label || label === "Untitled" || label === "Untitled Group") return null;
+
+              return {
+                  label,
+                  insert: `[[${label}]]`,
+                  desc: el.type.toUpperCase(),
+                  id: el.id
+              };
+          }).filter(n => n && n.label.toLowerCase().includes(query.toLowerCase())).slice(0, 5) as any[] || [];
+          
+          return nodes;
+      }
+
+      // Default Slash Commands
       const all = [
           { label: 'Checklist', insert: '- [ ] ', desc: 'To-do list' },
           { label: 'Heading 1', insert: '# ', desc: 'Large Header' },
