@@ -10,7 +10,7 @@ export interface DbCanvas {
 export interface DbElement {
   id: string;
   canvas_id: string;
-  type: "card" | "sticky" | "text";
+  type: ElementType;
   x: number;
   y: number;
   width: number;
@@ -18,6 +18,7 @@ export interface DbElement {
   content: string;
   color: string | null;
   rotation: number;
+  parent_id?: string | null; // For folder grouping
   created_at: string;
 }
 
@@ -29,17 +30,20 @@ export interface DbConnection {
   created_at: string;
 }
 
-// Application types (same as before but for reference)
+// Application types
+export type ElementType = "text" | "card" | "sticky" | "folder";
+
 export interface CanvasElement {
   id: string;
-  type: "card" | "sticky" | "text";
+  type: ElementType;
   x: number;
   y: number;
   width: number;
   height: number;
   content: string;
-  color?: string;
+  color?: string; // For sticky notes
   rotation?: number;
+  parentId?: string | null; // For folder grouping
 }
 
 export interface Connection {

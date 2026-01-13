@@ -14,7 +14,7 @@ interface CanvasContextType {
   deleteCanvas: (id: string) => Promise<void>;
   renameCanvas: (id: string, name: string) => Promise<void>;
   setActiveCanvas: (id: string | null) => void;
-  addElement: (element: Omit<CanvasElement, "id">) => Promise<void>;
+  addElement: (element: Omit<CanvasElement, "id">) => Promise<CanvasElement | null>;
   updateElement: (elementId: string, updates: Partial<CanvasElement>) => Promise<void>;
   deleteElement: (elementId: string) => Promise<void>;
   refreshCanvases: () => Promise<void>;
@@ -39,6 +39,7 @@ function dbToCanvas(dbCanvas: DbCanvas, elements: DbElement[], connections: DbCo
       content: el.content,
       color: el.color || undefined,
       rotation: el.rotation,
+      parentId: el.parent_id || null, // Map parent_id
     })),
     connections: connections.map((conn) => ({
       id: conn.id,
@@ -194,8 +195,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addElement = useCallback(
-    async (element: Omit<CanvasElement, "id">) => {
-      if (!supabase || !activeCanvasId) return;
+    async (element: Omit<CanvasElement, "id">): Promise<CanvasElement | null> => {
+      if (!supabase || !activeCanvasId) return null;
 
       try {
         const { data, error } = await supabase
@@ -210,6 +211,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
             content: element.content,
             color: element.color || null,
             rotation: element.rotation || 0,
+            parent_id: element.parentId || null,
           })
           .select()
           .single();
@@ -226,6 +228,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
           content: data.content,
           color: data.color || undefined,
           rotation: data.rotation,
+          parentId: data.parent_id || null,
         };
 
         await supabase
@@ -240,8 +243,11 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
               : c
           )
         );
+        
+        return newElement;
       } catch (error) {
         console.error("Error adding element:", error);
+        return null;
       }
     },
     [activeCanvasId]
@@ -260,6 +266,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         if (updates.content !== undefined) dbUpdates.content = updates.content;
         if (updates.color !== undefined) dbUpdates.color = updates.color || null;
         if (updates.rotation !== undefined) dbUpdates.rotation = updates.rotation;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((updates as any).parentId !== undefined) dbUpdates.parent_id = updates.parentId || null;
 
         const { error } = await supabase
           .from("elements")
@@ -292,12 +300,36 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
     async (elementId: string) => {
       if (!supabase || !activeCanvasId) return;
 
+      const elementToDelete = activeCanvas?.elements.find((el) => el.id === elementId);
+      
       try {
+        // If deleting a folder, first unparent all children
+        if (elementToDelete?.type === "folder") {
+            // Find children locally to update UI immediately? 
+            // Or just run DB update and refresh?
+            // Let's run DB update to set parent_id = null for children
+            const { error: unparentError } = await supabase
+                .from("elements")
+                .update({ parent_id: null })
+                .eq("parent_id", elementId);
+
+            if (unparentError) throw unparentError;
+            
+            // Update local state for children
+             setCanvases((prev) =>
+              prev.map((c) =>
+                c.id === activeCanvasId
+                  ? {
+                      ...c,
+                      elements: c.elements.map((el) => el.parentId === elementId ? { ...el, parentId: null } : el),
+                    }
+                  : c
+              )
+            );
+        }
+
         const { error } = await supabase.from("elements").delete().eq("id", elementId);
         if (error) throw error;
-
-        // Also delete any connections involving this element
-        // (Handled by ON DELETE CASCADE in DB, but need to update local state)
 
         await supabase
           .from("canvases")
@@ -323,7 +355,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         console.error("Error deleting element:", error);
       }
     },
-    [activeCanvasId]
+    [activeCanvasId, activeCanvas]
   );
 
   // New: Add Connection
