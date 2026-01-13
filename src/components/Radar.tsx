@@ -35,10 +35,13 @@ export function Radar({ elements, viewOffset, zoom, viewportSize, onMove }: Rada
         // Include Viewport (World Coords)
         // Screen = World * Zoom + Offset => World = (Screen - Offset) / Zoom
         // TopLeft (0,0) => (-Offset) / Zoom
+        const vpW = viewportSize.width || 1920;
+        const vpH = viewportSize.height || 1080;
+
         const vpX1 = -viewOffset.x / zoom;
         const vpY1 = -viewOffset.y / zoom;
-        const vpX2 = (viewportSize.width - viewOffset.x) / zoom;
-        const vpY2 = (viewportSize.height - viewOffset.y) / zoom;
+        const vpX2 = (vpW - viewOffset.x) / zoom;
+        const vpY2 = (vpH - viewOffset.y) / zoom;
 
         minX = Math.min(minX, vpX1);
         minY = Math.min(minY, vpY1);
@@ -121,8 +124,11 @@ export function Radar({ elements, viewOffset, zoom, viewportSize, onMove }: Rada
         // We want targetWorld to be the CENTER of the viewport
         // Viewport Center World = targetWorld
         // TopLeft World = targetWorld - (VP_Size_World / 2)
-        const vpHalfW = (viewportSize.width / zoom) / 2;
-        const vpHalfH = (viewportSize.height / zoom) / 2;
+        const safeW = viewportSize.width || 1920;
+        const safeH = viewportSize.height || 1080;
+
+        const vpHalfW = (safeW / zoom) / 2;
+        const vpHalfH = (safeH / zoom) / 2;
         
         const newWorldLeft = targetWorld.x - vpHalfW;
         const newWorldTop = targetWorld.y - vpHalfH;
@@ -140,11 +146,14 @@ export function Radar({ elements, viewOffset, zoom, viewportSize, onMove }: Rada
     const handleMouseUp = () => setIsDragging(false);
 
     // Render Calculations
+    const safeW = viewportSize.width || 1920;
+    const safeH = viewportSize.height || 1080;
+
     const vpWorldRect = {
         x: -viewOffset.x / zoom,
         y: -viewOffset.y / zoom,
-        w: viewportSize.width / zoom,
-        h: viewportSize.height / zoom
+        w: safeW / zoom,
+        h: safeH / zoom
     };
 
     const vpRadarPos = worldToRadar(vpWorldRect.x, vpWorldRect.y);

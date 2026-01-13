@@ -103,15 +103,21 @@ export function CanvasEditor() {
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
+    if (!canvasRef.current) return;
     const updateSize = () => {
-        if (canvasRef.current) {
-            const rect = canvasRef.current.getBoundingClientRect();
-            setViewportSize({ width: rect.width, height: rect.height });
-        }
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (rect) setViewportSize({ width: rect.width, height: rect.height });
     };
+    
+    // Initial size
     updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+
+    const resizeObserver = new ResizeObserver(() => {
+       updateSize();
+    });
+    
+    resizeObserver.observe(canvasRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
