@@ -210,5 +210,70 @@ export const useSfx = () => {
         }
     }, []);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak };
+    const playMerge = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+
+        // "Combine" Sound - Converging sine waves
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(200, now);
+        osc1.frequency.linearRampToValueAtTime(440, now + 0.3);
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(600, now);
+        osc2.frequency.linearRampToValueAtTime(440, now + 0.3);
+
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(now + 0.4);
+        osc2.stop(now + 0.4);
+    }, [initAudio]);
+
+    const playTrash = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+
+        // "De-rez" Sound - White noise burst downsampled
+        const bufferSize = ctx.sampleRate * 0.2; // 0.2 seconds
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(1000, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+    }, [initAudio]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playTrash };
 };

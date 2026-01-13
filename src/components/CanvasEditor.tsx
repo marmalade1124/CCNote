@@ -88,7 +88,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 
 export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
-  const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak } = useSfx();
+  const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak, playMerge, playTrash } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -204,6 +204,7 @@ export function CanvasEditor() {
              
              if (target && target.id !== elementId) {
                  addConnection(elementId, target.id);
+                 playConnect(); // SFX for Wiki Link
              }
          });
     }
@@ -820,6 +821,7 @@ export function CanvasEditor() {
                 });
                 
                 if (folder) {
+                    playMerge(); // SFX for Merge
                     await updateElements([
                         { id: draggedId, changes: { parentId: folder.id } },
                         { id: target.id, changes: { parentId: folder.id } }
@@ -913,6 +915,7 @@ export function CanvasEditor() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       if (e.key === "Delete" && selectedElement) {
+          playTrash();
           deleteElement(selectedElement);
           setSelectedElement(null);
       }
