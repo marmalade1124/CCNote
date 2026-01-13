@@ -203,8 +203,12 @@ export function CanvasEditor() {
              const target = findTarget(targetName);
              
              if (target && target.id !== elementId) {
-                 addConnection(elementId, target.id);
-                 playConnect(); // SFX for Wiki Link
+                 // Check if connection already exists to prevent spamming SFX
+                 const exists = activeCanvas.connections.some(c => c.from === elementId && c.to === target.id);
+                 if (!exists) {
+                     addConnection(elementId, target.id);
+                     playConnect(); // SFX for Wiki Link
+                 }
              }
          });
     }
