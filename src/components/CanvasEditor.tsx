@@ -132,12 +132,15 @@ export function CanvasEditor() {
 
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
   
+  const activeCommandSetter = useRef<((s: string) => void) | null>(null);
+
   // Slash Command State
   const [commandMenu, setCommandMenu] = useState<{
       visible: boolean;
       x: number;
       y: number;
       elementId: string;
+      fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title';
       query: string;
       index: number;
   } | null>(null);
@@ -209,12 +212,19 @@ export function CanvasEditor() {
       handleContentChange(elementId, content);
   };
   
-  const handleInputKeyDown = (e: React.KeyboardEvent, elementId: string, currentContent: string, setContent: (s: string) => void) => {
+  const handleInputKeyDown = (
+      e: React.KeyboardEvent, 
+      elementId: string, 
+      currentContent: string, 
+      setContent: (s: string) => void,
+      fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title' = 'plain'
+  ) => {
        // Command Menu Navigation
        if (commandMenu && commandMenu.visible && commandMenu.elementId === elementId) {
+           activeCommandSetter.current = setContent; // Update setter reference
            if (e.key === 'ArrowDown') {
                e.preventDefault();
-               setCommandMenu(prev => prev ? { ...prev, index: Math.min(prev.index + 1, 4) } : null); // Max 5 items
+               setCommandMenu(prev => prev ? { ...prev, index: Math.min(prev.index + 1, 4) } : null);
                return;
            }
            if (e.key === 'ArrowUp') {
@@ -224,7 +234,7 @@ export function CanvasEditor() {
            }
            if (e.key === 'Enter') {
                e.preventDefault();
-               executeCommand(commandMenu.index, elementId, currentContent, setContent);
+               executeCommand(commandMenu.index);
                return;
            }
            if (e.key === 'Escape') {
@@ -236,35 +246,54 @@ export function CanvasEditor() {
        // Trigger '/'
        if (e.key === '/') {
            const target = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
-           // Simple positioning (approximate)
            const rect = target.getBoundingClientRect();
+           activeCommandSetter.current = setContent;
            setCommandMenu({
                visible: true,
-               x: rect.left + 20, // Offset slightly
-               y: rect.bottom - 40, // Above or near cursor? Hard to get cursor pos. Let's put it at bottom-left of input for now or use library. 
-               // Better: Mouse Pos? No, keyboard. 
-               // Just center or bottom-left of element is fine for v1.
+               x: rect.left + 20,
+               y: rect.bottom - 40,
                elementId,
+               fieldType,
                query: '',
                index: 0
            });
-           // We allow '/' to be typed.
        }
   };
 
-  const executeCommand = (index: number, elementId: string, currentContent: string, setContent: (s: string) => void) => {
-      const commands = getFilteredCommands(commandMenu?.query || '');
+  const executeCommand = (index: number) => {
+      if (!commandMenu || !activeCommandSetter.current) return;
+      const commands = getFilteredCommands(commandMenu.query);
       const cmd = commands[index];
+      
+      // Get Current Content
+      // We must retrieve it freshly because 'currentContent' arg to handleInputKeyDown is stale in this closure context?
+      // No, we need it. 
+      // We can look it up activeCanvas/localContent using elementId and fieldType.
+      const el = activeCanvas?.elements.find(e => e.id === commandMenu.elementId);
+      if (!el) return;
+      
+      let rawContent = localContent[el.id] ?? el.content; 
+      // This rawContent is the FULL content (e.g. JSON for card).
+      // We need the TEXT part.
+      let currentText = "";
+      
+      try {
+          if (commandMenu.fieldType === 'plain') currentText = rawContent;
+          else if (commandMenu.fieldType === 'card_desc') currentText = parseCardContent(rawContent).description;
+          else if (commandMenu.fieldType === 'image_caption') currentText = parseImageContent(rawContent).description;
+          else if (commandMenu.fieldType === 'image_title') currentText = parseImageContent(rawContent).title;
+          else if (commandMenu.fieldType === 'card_title') currentText = parseCardContent(rawContent).title;
+      } catch (e) { return; }
+
       if (cmd) {
-         // Replace last '/' + query with command text
-         const q = commandMenu?.query || '';
-         const newText = currentContent.slice(0, currentContent.lastIndexOf('/' + q)) + cmd.insert;
-         // Adjust: This logic assumes cursor is at end. 
-         // Real editors are complex. For v1, we append or replace end.
-         // Let's assume user just typed '/'.
-         // Re-read content from state might include the '/'?
-         // Yes so we remove it.
-         setContent(newText);
+         const q = commandMenu.query;
+         // Scan for last slash + query
+         const matchStr = '/' + q;
+         const idx = currentText.lastIndexOf(matchStr);
+         if (idx !== -1) {
+             const newText = currentText.slice(0, idx) + cmd.insert + currentText.slice(idx + matchStr.length);
+             activeCommandSetter.current(newText);
+         }
          setCommandMenu(null);
       }
   };
@@ -990,10 +1019,14 @@ export function CanvasEditor() {
                {getFilteredCommands(commandMenu.query).map((cmd, i) => (
                    <button 
                        key={cmd.label}
-                       className={`flex items-center gap-3 px-2 py-1.5 rounded text-left transition-colors
+                       className={`flex items-center gap-3 px-2 py-1.5 rounded text-left transition-colors cursor-pointer
                            ${i === commandMenu.index ? 'bg-[#eca013] text-[#0a0b10]' : 'text-[#eca013] hover:bg-[#eca013]/10'}
                        `}
-                       onClick={() => { /* Click handling todo */ }}
+                       onMouseDown={(e) => { e.preventDefault(); /* Prevent focus loss */ }}
+                       onClick={(e) => { 
+                           e.stopPropagation();
+                           executeCommand(i);
+                       }}
                    >
                        <div className={`w-4 h-4 flex items-center justify-center rounded border ${i === commandMenu.index ? 'border-[#0a0b10]' : 'border-[#eca013]/50'}`}>
                            <span className="text-[10px] font-mono">{cmd.label[0]}</span>
@@ -1171,7 +1204,7 @@ export function CanvasEditor() {
                                                 onClick={(e) => e.stopPropagation()}
                                                 onMouseDown={(e) => e.stopPropagation()}
                                                 onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
-                                                onKeyDown={(e) => handleInputKeyDown(e, element.id, cardData.description, (s) => handleContentChange(element.id, serializeCardContent(cardData.title, s)))}
+                                                onKeyDown={(e) => handleInputKeyDown(e, element.id, cardData.description, (s) => handleContentChange(element.id, serializeCardContent(cardData.title, s)), 'card_desc')}
                                                 placeholder="Input data stream..."
                                             />
                                         ) : (
