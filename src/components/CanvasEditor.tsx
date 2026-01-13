@@ -94,6 +94,13 @@ export function CanvasEditor() {
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 }); // Pan State (T)
   const [zoom, setZoom] = useState(1); // Zoom State (S)
   const [localPositions, setLocalPositions] = useState<Record<string, { x: number; y: number }>>({});
+  
+  // Refs for Event Listener Access
+  const zoomRef = useRef(zoom);
+  const viewOffsetRef = useRef(viewOffset);
+
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { viewOffsetRef.current = viewOffset; }, [viewOffset]);
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -496,49 +503,52 @@ export function CanvasEditor() {
       }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-      // Zoom on Ctrl+Wheel, Pan on Wheel
-      if (e.ctrlKey || e.metaKey) {
-          // ZOOM Logic
-          const zoomSensitivity = -0.001; // Negative because wheel down (positive delta) usually means zoom out in key-modifiers
-          // Actually standard: Ctrl+WheelDown = Zoom OUT. Ctrl+WheelUp = Zoom IN.
-          // deltaY > 0 (down). delta * sens < 0. zoom decreases. Correct.
-          
-          const delta = e.deltaY * zoomSensitivity;
-          
-          const rect = canvasRef.current!.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
+  useEffect(() => {
+      const handleWheelNative = (e: WheelEvent) => {
+          if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              const zoomSensitivity = -0.001; 
+              const delta = e.deltaY * zoomSensitivity;
+              
+              const currentZoom = zoomRef.current;
+              const currentOffset = viewOffsetRef.current;
 
-          const worldX = (mouseX - viewOffset.x) / zoom;
-          const worldY = (mouseY - viewOffset.y) / zoom;
-          
-          const newZoom = Math.min(Math.max(zoom + delta, 0.1), 5); 
-          
-          const newOffset = {
-              x: mouseX - (worldX * newZoom),
-              y: mouseY - (worldY * newZoom)
-          };
-          
-          setZoom(newZoom);
-          setViewOffset(newOffset);
-      } else {
-          // PAN Logic
-          // Wheel Down = Move View UP (content moves up). Offset Y decreases.
-          // Standard browser scroll: Wheel Down -> Scroll Down (View Window moves Down).
-          // Pan: If I push wheel down, I want to see content below. So View moves Down (Offset moves Up relative to World? No).
-          // If ViewOffset decreases (more negative), we move Right/Down in world?
-          // left: element.x + offset.x.
-          // If offset decreases (becomes -100), element is drawn at x-100. (Moved Left).
-          // So decrease offset = Move View Right? No, move view "window" right.
-          // Actually, "Push Content Up" = Scroll Down = Offset Y decreases.
-          
-          setViewOffset(prev => ({
-              x: prev.x - e.deltaX,
-              y: prev.y - e.deltaY
-          }));
+              const rect = canvasRef.current!.getBoundingClientRect();
+              const mouseX = e.clientX - rect.left;
+              const mouseY = e.clientY - rect.top;
+
+              const worldX = (mouseX - currentOffset.x) / currentZoom;
+              const worldY = (mouseY - currentOffset.y) / currentZoom;
+              
+              const newZoom = Math.min(Math.max(currentZoom + delta, 0.1), 5); 
+              
+              const newOffset = {
+                  x: mouseX - (worldX * newZoom),
+                  y: mouseY - (worldY * newZoom)
+              };
+              
+              setZoom(newZoom);
+              setViewOffset(newOffset);
+          } else {
+              // Pan
+              setViewOffset(prev => ({
+                  x: prev.x - e.deltaX,
+                  y: prev.y - e.deltaY
+              }));
+          }
+      };
+
+      const canvasEl = canvasRef.current;
+      if (canvasEl) {
+          canvasEl.addEventListener('wheel', handleWheelNative, { passive: false });
       }
-  };
+
+      return () => {
+          if (canvasEl) {
+              canvasEl.removeEventListener('wheel', handleWheelNative);
+          }
+      };
+  }, []); // Empty deps because we use refs
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Check if handling Pan (either via Tool or Middle Click)
@@ -866,7 +876,6 @@ export function CanvasEditor() {
       <div ref={canvasRef} className="flex-1 relative overflow-hidden w-full h-full" 
            onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { handleMouseUp(); setDragTargetId(null); setIsDragging(false); }}
            onClick={handleCanvasClick}
-           onWheel={handleWheel}
            style={{ cursor: getCursor() }}>
            
            {/* Transformed Content */}
