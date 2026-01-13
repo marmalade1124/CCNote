@@ -1091,7 +1091,7 @@ export function CanvasEditor() {
                                 ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
                             `}
                             style={{
-                                left: pos.x, top: pos.y, width: element.width, minHeight: element.height,
+                                left: pos.x, top: pos.y, width: element.width, height: element.height,
                                 transform: `rotate(${element.rotation || 0}deg)`,
                                 backgroundColor: element.type === 'sticky' ? element.color : undefined,
                                 zIndex: isSelected ? 50 : (element.parentId ? 20 : 10),
