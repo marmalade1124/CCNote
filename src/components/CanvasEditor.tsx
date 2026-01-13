@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useCanvas } from "@/context/CanvasContext";
 import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Radar } from "./Radar";
 
 const STICKY_COLORS = [
   "#eca01340", "#39ff1440", "#00f0ff40", "#ff003c40", "#b026ff40",
@@ -85,16 +86,33 @@ export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 }); // Pan State
+  // Replaced dragOffset with explicit start refs for scaling support
+  // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); 
+  const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 }); // Pan State (T)
+  const [zoom, setZoom] = useState(1); // Zoom State (S)
   const [localPositions, setLocalPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragElementRef = useRef<string | null>(null);
-  const dragStartPosRef = useRef<{x: number, y: number} | null>(null);
+  const dragStartPosRef = useRef<{x: number, y: number} | null>(null); // Element Original World Pos
+  const dragStartMouseRef = useRef<{x: number, y: number} | null>(null); // Mouse Original Screen Pos
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start
+  const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start (Mouse - Offset)
+
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateSize = () => {
+        if (canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            setViewportSize({ width: rect.width, height: rect.height });
+        }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
 
@@ -107,6 +125,8 @@ export function CanvasEditor() {
   // Reset view on canvas change (optional, but good UX)
   useEffect(() => {
     setViewOffset({ x: 0, y: 0 });
+    setZoom(1);
+    setLocalPositions({});
   }, [activeCanvas?.id]);
 
   const handleContentChange = (elementId: string, content: string) => {
@@ -137,15 +157,17 @@ export function CanvasEditor() {
           const result = event.target?.result as string;
           if (result && activeCanvas) {
               const rect = canvasRef.current!.getBoundingClientRect();
-              // Calculate center of current viewport
-              // Viewport Center X = (Width / 2) - viewOffset.x
-              const centerX = (rect.width / 2) - viewOffset.x - 150; // -150 for half element width
-              const centerY = (rect.height / 2) - viewOffset.y - 175;
+              // Center logic with Zoom: WorldCenter = (ScreenCenter - Offset) / Zoom
+              const screenCenterX = rect.width / 2;
+              const screenCenterY = rect.height / 2;
+              
+              const worldX = (screenCenterX - viewOffset.x) / zoom;
+              const worldY = (screenCenterY - viewOffset.y) / zoom;
               
               await addElement({
                   type: 'image',
-                  x: centerX,
-                  y: centerY,
+                  x: worldX - 150, // Center the 300px wide image
+                  y: worldY - 175,
                   width: 300,
                   height: 350,
                   content: serializeImageContent(result, "Uploaded Image", "Description..."),
@@ -235,9 +257,8 @@ export function CanvasEditor() {
   const handleCanvasClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.element-container')) return;
     
-    // If panning, do not create
     if (activeTool === 'pan') {
-        setIsDragging(false); // safety
+        setIsDragging(false); 
         return;
     }
 
@@ -246,10 +267,10 @@ export function CanvasEditor() {
       return;
     }
     
-    // Calculate click pos in Canvas Space (offset inverse)
+    // Zoom/Pan Aware Coordinate Calculation
     const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left - viewOffset.x;
-    const y = e.clientY - rect.top - viewOffset.y;
+    const x = (e.clientX - rect.left - viewOffset.x) / zoom;
+    const y = (e.clientY - rect.top - viewOffset.y) / zoom;
 
     if (activeTool === "card") {
       addElement({ type: "card", x, y, width: 300, height: 180, content: serializeCardContent("Note_Alpha", "Enter data..."), rotation: 0 });
@@ -278,14 +299,7 @@ export function CanvasEditor() {
       return;
     }
 
-    // Pan Tool on element -> Treat as pan unless text? 
-    // Usually pan tool grabs canvas regardless of element, OR elements are selectable but not draggable?
-    // Let's say Pan tool ignores element interactions except letting specific clicks through?
-    // For now, if Pan tool, we stop prop and start pan.
     if (activeTool === 'pan') {
-         // Pass through to canvas handler logic? 
-         // But canvas handler is on background.
-         // We trigger pan start here?
          setIsDragging(true);
          panStartRef.current = { x: e.clientX - viewOffset.x, y: e.clientY - viewOffset.y }; 
          return;
@@ -306,25 +320,62 @@ export function CanvasEditor() {
     const currentX = localPositions[element.id]?.x ?? element.x;
     const currentY = localPositions[element.id]?.y ?? element.y;
     dragStartPosRef.current = { x: currentX, y: currentY };
-    
-    setDragOffset({
-      x: e.clientX - currentX,
-      y: e.clientY - currentY,
-    });
+    dragStartMouseRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseDownRaw = (e: React.MouseEvent) => {
-      // Background Mouse Down for Pan
-      if (activeTool === 'pan' || (activeTool === 'select' && e.button === 1)) { // Middle click too
+      // Pan Logic (Offset based)
+      // Visual = (World * Zoom) + Offset
+      // Offset = Screen - (World * Zoom)
+      // We want to keep (Screen - Offset) constant relative to mouse movement?
+      // Pan moves the offset directly. 1px mouse = 1px offset.
+      if (activeTool === 'pan' || (activeTool === 'select' && e.button === 1)) { 
           setIsDragging(true);
-          // Store "Mouse - Offset" to preserve delta
+          // Store 'Screen - Offset' as the anchor
           panStartRef.current = { x: e.clientX - viewOffset.x, y: e.clientY - viewOffset.y };
       }
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+      // Zoom on Ctrl+Wheel OR simply Wheel (since no vertical scroll)
+      // For best UX in "infinite canvas", wheel usually zooms or vertical pans.
+      // Given user request "scroll to zoom", we'll default to zoom.
+      
+      // Prevent browser zoom if ctrl?
+      // Actually prevent default if we handle it.
+      
+      const zoomSensitivity = -0.001;
+      const delta = e.deltaY * zoomSensitivity;
+      
+      // If user holds Shift, maybe horizontal pan? For now, just Zoom.
+      
+      const rect = canvasRef.current!.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Current World Pos under Mouse
+      // Screen = (World * Zoom) + Offset
+      // World = (Screen - Offset) / Zoom
+      const worldX = (mouseX - viewOffset.x) / zoom;
+      const worldY = (mouseY - viewOffset.y) / zoom;
+      
+      const newZoom = Math.min(Math.max(zoom + delta, 0.1), 5); // 0.1x to 5x
+      
+      // New Offset to keep World Point under Mouse
+      // Screen = (World * NewZoom) + NewOffset
+      // NewOffset = Screen - (World * NewZoom)
+      const newOffset = {
+          x: mouseX - (worldX * newZoom),
+          y: mouseY - (worldY * newZoom)
+      };
+      
+      setZoom(newZoom);
+      setViewOffset(newOffset);
+  };
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (activeTool === 'pan' && isDragging && panStartRef.current) {
-        // New Offset = Mouse - Start
+        // Pan logic is purely Translation, zoom independent for the Offset itself (Offset is in Screen pixels)
         setViewOffset({
             x: e.clientX - panStartRef.current.x,
             y: e.clientY - panStartRef.current.y
@@ -332,10 +383,18 @@ export function CanvasEditor() {
         return;
     }
 
-    if (activeTool === "connect" || !isDragging || !dragElementRef.current) return;
+    if (activeTool === "connect" || !isDragging || !dragElementRef.current || !dragStartPosRef.current || !dragStartMouseRef.current) return;
 
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
+    // Delta Screen
+    const dxScreen = e.clientX - dragStartMouseRef.current.x;
+    const dyScreen = e.clientY - dragStartMouseRef.current.y;
+    
+    // Delta World = Delta Screen / Zoom
+    const dxWorld = dxScreen / zoom;
+    const dyWorld = dyScreen / zoom;
+
+    const newX = dragStartPosRef.current.x + dxWorld;
+    const newY = dragStartPosRef.current.y + dyWorld;
 
     setLocalPositions((prev) => ({
       ...prev,
@@ -354,7 +413,7 @@ export function CanvasEditor() {
             setDragTargetId(target ? target.id : null);
         }
     }
-  }, [isDragging, dragOffset, activeTool, activeCanvas, viewOffset]);
+  }, [isDragging, activeTool, activeCanvas, viewOffset, zoom]);
 
   const handleMouseUp = useCallback(async () => {
     setDragTargetId(null);
@@ -368,6 +427,8 @@ export function CanvasEditor() {
     if (!isDragging || !dragElementRef.current || !activeCanvas) {
         setIsDragging(false);
         dragElementRef.current = null;
+        dragStartPosRef.current = null;
+        dragStartMouseRef.current = null;
         return;
     }
 
@@ -499,7 +560,6 @@ export function CanvasEditor() {
   const getElementPosition = (element: CanvasElement) => {
     const local = localPositions[element.id];
     if (local && isDragging && dragElementRef.current === element.id) {
-      // Only element coords, ViewOffset handled by transform
       return local;
     }
     return { x: element.x, y: element.y };
@@ -524,7 +584,9 @@ export function CanvasEditor() {
           setConnectionStart(null);
           setActiveTool('select');
       }
-      // Spacebar for panning? Maybe later.
+      if (e.code === "Space") {
+          // Could enable pan temporarily?
+      }
   };
 
   const collapsedFolders = useMemo(() => {
@@ -583,7 +645,7 @@ export function CanvasEditor() {
          onMouseDown={handleMouseDownRaw} /* Capture Pan Start anywhere */
     >
       <div className="absolute inset-0 pointer-events-none retro-grid opacity-100 mix-blend-screen"
-         style={{ backgroundPosition: `${viewOffset.x}px ${viewOffset.y}px` }} /* Move grid with Pan */
+         style={{ backgroundPosition: `${viewOffset.x}px ${viewOffset.y}px`, backgroundSize: `${50 * zoom}px ${50 * zoom}px` }} /* Grid scales with zoom */
       ></div>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
@@ -594,6 +656,7 @@ export function CanvasEditor() {
          <div className="pl-3 pr-2 border-r border-[#eca013]/30 flex items-center gap-2 opacity-80 cursor-default">
             <span className="material-symbols-outlined text-sm">folder_open</span>
             <span className="text-xs font-bold uppercase tracking-wider max-w-[100px] truncate">{activeCanvas.name}</span>
+            <span className="text-[9px] font-mono opacity-50 ml-1">{Math.round(zoom * 100)}%</span>
          </div>
 
          <div className="flex items-center gap-1">
@@ -623,7 +686,7 @@ export function CanvasEditor() {
                     }[tool as string]}</span>
                     
                     {/* Tooltip */}
-                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
+                    <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
                         {tool.toUpperCase()}
                     </span>
                 </button>
@@ -635,10 +698,11 @@ export function CanvasEditor() {
       <div ref={canvasRef} className="flex-1 relative overflow-hidden w-full h-full" 
            onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { handleMouseUp(); setDragTargetId(null); setIsDragging(false); }}
            onClick={handleCanvasClick}
+           onWheel={handleWheel}
            style={{ cursor: getCursor() }}>
            
            {/* Transformed Content */}
-           <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px)`, willChange: 'transform', width: '100%', height: '100%', pointerEvents: activeTool === 'pan' ? 'none' : 'auto' }} className={activeTool === 'pan' ? '' : 'pointer-events-auto'}>
+           <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${zoom})`, transformOrigin: '0 0', willChange: 'transform', width: '100%', height: '100%', pointerEvents: activeTool === 'pan' ? 'none' : 'auto' }} className={activeTool === 'pan' ? '' : 'pointer-events-auto'}>
                
                 {/* Connections */}
                 <svg className="absolute top-0 left-0 overflow-visible w-full h-full pointer-events-none z-0">
@@ -819,7 +883,18 @@ export function CanvasEditor() {
             </div>
       </div>
       <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm pointer-events-none z-40">
-        <span className="font-bold text-[#eca013]">CMD:</span> GRAB_TAB=MOVE // DRAG_ONTO_NODE=GROUP // DRAG_OUT=UNGROUP
+        <span className="font-bold text-[#eca013]">CMD:</span> SCRL=ZOOM // CLICK_DRAG=PAN
+      </div>
+
+      {/* Radar Minimap */}
+      <div className="absolute bottom-6 right-6 z-50">
+         <Radar 
+            elements={activeCanvas.elements} 
+            viewOffset={viewOffset} 
+            zoom={zoom} 
+            viewportSize={viewportSize} 
+            onMove={setViewOffset} 
+         />
       </div>
     </div>
   );
