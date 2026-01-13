@@ -16,6 +16,7 @@ interface CanvasContextType {
   setActiveCanvas: (id: string | null) => void;
   addElement: (element: Omit<CanvasElement, "id">) => Promise<CanvasElement | null>;
   updateElement: (elementId: string, updates: Partial<CanvasElement>) => Promise<void>;
+  updateElements: (batchUpdates: { id: string; changes: Partial<CanvasElement> }[]) => Promise<void>;
   deleteElement: (elementId: string) => Promise<void>;
   refreshCanvases: () => Promise<void>;
   addConnection: (fromId: string, toId: string) => Promise<void>;
@@ -23,6 +24,13 @@ interface CanvasContextType {
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
+
+// ... (existing dbToCanvas) ...
+
+// ... (existing CanvasProvider start) ...
+// ... (existing helper functions) ...
+
+
 
 // Transform database canvas + elements + connections to app format
 function dbToCanvas(dbCanvas: DbCanvas, elements: DbElement[], connections: DbConnection[]): Canvas {
@@ -296,6 +304,53 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
     [activeCanvasId]
   );
 
+  const updateElements = useCallback(
+    async (batchUpdates: { id: string; changes: Partial<CanvasElement> }[]) => {
+      const client = supabase;
+      if (!client || !activeCanvasId || batchUpdates.length === 0) return;
+
+      try {
+         // 1. Optimistically update local state ONCE
+         setCanvases((prev) =>
+          prev.map((c) =>
+            c.id === activeCanvasId
+              ? {
+                  ...c,
+                  elements: c.elements.map((el) => {
+                      const update = batchUpdates.find(u => u.id === el.id);
+                      return update ? { ...el, ...update.changes } : el;
+                  }),
+                  updatedAt: Date.now(),
+                }
+              : c
+          )
+        );
+
+        // 2. Perform DB updates in parallel
+        const promises = batchUpdates.map(async ({ id, changes }) => {
+            const dbUpdates: Partial<DbElement> = {};
+            if (changes.x !== undefined) dbUpdates.x = changes.x;
+            if (changes.y !== undefined) dbUpdates.y = changes.y;
+            if (changes.width !== undefined) dbUpdates.width = changes.width;
+            if (changes.height !== undefined) dbUpdates.height = changes.height;
+            if (changes.content !== undefined) dbUpdates.content = changes.content;
+            if (changes.color !== undefined) dbUpdates.color = changes.color || null;
+            if (changes.rotation !== undefined) dbUpdates.rotation = changes.rotation;
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((changes as any).parentId !== undefined) dbUpdates.parent_id = changes.parentId || null;
+            
+            return client.from("elements").update(dbUpdates).eq("id", id);
+        });
+
+        await Promise.all(promises);
+
+      } catch (error) {
+         console.error("Error batch updating elements:", error);
+      }
+    },
+    [activeCanvasId]
+  );
+
   const deleteElement = useCallback(
     async (elementId: string) => {
       if (!supabase || !activeCanvasId) return;
@@ -450,10 +505,11 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         setActiveCanvas,
         addElement,
         updateElement,
+        updateElements, // Exported
         deleteElement,
         refreshCanvases,
         addConnection,
-        deleteConnection, // Exported
+        deleteConnection, 
       }}
     >
       {children}

@@ -52,7 +52,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 }
 
 export function CanvasEditor() {
-  const { activeCanvas, addElement, updateElement, deleteElement, addConnection, deleteConnection } = useCanvas();
+  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection } = useCanvas();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -80,7 +80,8 @@ export function CanvasEditor() {
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
-    if (e.target !== canvasRef.current) return;
+    if ((e.target as HTMLElement).closest('.element-container')) return;
+    
     if (activeTool === "connect") {
       setConnectionStart(null);
       return;
@@ -94,7 +95,7 @@ export function CanvasEditor() {
       addElement({ type: "card", x, y, width: 300, height: 180, content: serializeCardContent("Note_Alpha", "Enter data..."), rotation: 0 });
       setActiveTool("select");
     } else if (activeTool === "sticky") {
-      addElement({ type: "sticky", x, y, width: 200, height: 200, content: "Quick_Memo", color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)], rotation: 0 }); // flattened rotation for retro feel? kept 0
+      addElement({ type: "sticky", x, y, width: 200, height: 200, content: "Quick_Memo", color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)], rotation: 0 }); 
       setActiveTool("select");
     } else if (activeTool === "text") {
       addElement({ type: "text", x, y, width: 200, height: 40, content: ">_ TYPE_HERE", rotation: 0 });
@@ -107,6 +108,7 @@ export function CanvasEditor() {
   const handleElementMouseDown = (e: React.MouseEvent, element: CanvasElement) => {
     e.stopPropagation();
 
+    // CONNECT TOOL
     if (activeTool === "connect") {
       if (connectionStart === null) {
         setConnectionStart(element.id);
@@ -115,6 +117,13 @@ export function CanvasEditor() {
         setConnectionStart(null);
       }
       return;
+    }
+
+    // DRAG HANDLE CHECK (Only allow dragging from specific areas)
+    if (!(e.target as HTMLElement).closest('.drag-handle')) {
+        // Allow selecting even if not dragging
+        setSelectedElement(element.id);
+        return;
     }
 
     setSelectedElement(element.id);
@@ -136,41 +145,12 @@ export function CanvasEditor() {
 
     const newX = e.clientX - dragOffset.x;
     const newY = e.clientY - dragOffset.y;
-    const deltaX = newX - (localPositions[dragElementRef.current]?.x ?? activeCanvas?.elements.find(el => el.id === dragElementRef.current)?.x ?? 0);
-    const deltaY = newY - (localPositions[dragElementRef.current]?.y ?? activeCanvas?.elements.find(el => el.id === dragElementRef.current)?.y ?? 0);
-
-    // If moving a folder, move children visually
-    const element = activeCanvas?.elements.find(el => el.id === dragElementRef.current);
-    if (element?.type === 'folder') {
-        const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
-        children.forEach(child => {
-             // We need to track children positions too. 
-             // Simplification: Just update localPositions for children based on previous local position OR base position + total delta?
-             // Best to use previous local position + current frame delta.
-             // But React update cycle might miss frames. 
-             // Better: Store initial drag start positions for ALL moved elements?
-             // Let's rely on calculating absolute new position based on dragOffset for the parent, and applying same diff to children.
-             // This requires knowing the *initial* position of children at drag start.
-        });
-        // This is getting complex for visual drag. 
-        // Simple hack: Update parent localPosition. If parent is rendered, children might not move automatically unless their position is relative?
-        // BUT we are using absolute positioning.
-        // So we MUST update children localPositions too if we want them to move visually with the folder.
-        
-        // Let's skip complex optimisations for now and just update the parent. 
-        // IF we want children to follow, we must update them.
-        // I'll update the parent. The children will "snap" on mouse up? No, that looks bad.
-        // I'll leave children visual update for now (they won't move visually until mouse up update).
-        // User asked "Moving folder moves all children".
-        // I'll implement 'MouseUp' logic updates. Visual drag might be static for children for MVP.
-        // OR: I can loop and update localPositions for all children.
-    }
 
     setLocalPositions((prev) => ({
       ...prev,
       [dragElementRef.current!]: { x: newX, y: newY },
     }));
-  }, [isDragging, dragOffset, activeTool, activeCanvas, localPositions]);
+  }, [isDragging, dragOffset, activeTool]);
 
   // Auto-layout helper
   const reorganizeFolder = async (folderId: string, currentChildren: CanvasElement[]) => {
@@ -179,13 +159,12 @@ export function CanvasEditor() {
 
       const PADDING = 24;
       const HEADER = 40;
-      const COL_WIDTH = 320; // Approx max width of card + gap
-      const ROW_HEIGHT = 220; // Approx max height + gap
+      const COL_WIDTH = 320; 
+      const ROW_HEIGHT = 220; 
 
-      // Sort by index/creation (for now just stable sort by id or y)
       const sorted = [...currentChildren].sort((a,b) => (a.y - b.y) || (a.x - b.x));
       
-      const updates: Promise<void | CanvasElement | null>[] = [];
+      const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
       
       for (let i = 0; i < sorted.length; i++) {
           const child = sorted[i];
@@ -196,7 +175,7 @@ export function CanvasEditor() {
           const newY = folder.y + HEADER + PADDING + (row * ROW_HEIGHT);
           
           if (child.x !== newX || child.y !== newY) {
-              updates.push(updateElement(child.id, { x: newX, y: newY }));
+              batchUpdates.push({ id: child.id, changes: { x: newX, y: newY } });
           }
       }
 
@@ -204,14 +183,16 @@ export function CanvasEditor() {
       const cols = Math.min(sorted.length, 2);
       const rows = Math.ceil(sorted.length / 2);
       
-      const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); // -20 to tighten last gap
+      const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); 
       const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
       
       if (folder.width !== newWidth || folder.height !== newHeight) {
-           updates.push(updateElement(folderId, { width: newWidth, height: newHeight }));
+           batchUpdates.push({ id: folderId, changes: { width: newWidth, height: newHeight } });
       }
       
-      await Promise.all(updates);
+      if (batchUpdates.length > 0) {
+          await updateElements(batchUpdates);
+      }
   };
 
   const handleMouseUp = useCallback(async () => {
@@ -230,7 +211,11 @@ export function CanvasEditor() {
     }
 
     const draggedElement = activeCanvas.elements.find(el => el.id === draggedId);
-    if (!draggedElement) return;
+    if (!draggedElement) {
+        setIsDragging(false);
+        dragElementRef.current = null;
+        return;
+    }
 
     // Check collision for Grouping (only if dragging a non-folder node)
     if (draggedElement.type !== 'folder') {
@@ -243,38 +228,45 @@ export function CanvasEditor() {
         );
 
         if (target) {
+            // Dragged INTO folder
             if (target.type === 'folder') {
-                // Dragged INTO folder
+                // Must explicitly update parentId
                 await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: target.id });
                 
-                // Trigger Layout
                 const children = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
+                // Pass updated dragged element to layout
                 await reorganizeFolder(target.id, [...children, { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id }]);
 
                 setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                 setIsDragging(false); 
                 dragElementRef.current = null;
                 return;
-            } else if (!target.parentId && !draggedElement.parentId) {
-                // Dragged onto other node -> Create Group
+            } 
+            // Dragged onto other node -> Create Group
+            else if (!target.parentId && !draggedElement.parentId) {
                 const PADDING = 24;
                 const HEADER = 40;
+                const COL_WIDTH = 320;
                 
-                // Create Folder (size will be fixed by layout immediately)
+                // Pre-calc size for 2 items
+                const initialW = (PADDING * 2) + (2 * COL_WIDTH) - 20; 
+                const initialH = HEADER + PADDING + 220; // 1 row
+
                 const folder = await addElement({
                     type: 'folder',
                     x: pos.x - PADDING,
                     y: pos.y - HEADER - PADDING,
-                    width: 100, // placeholder
-                    height: 100, // placeholder
+                    width: initialW, 
+                    height: initialH,
                     content: "NEW_GROUP",
                 });
                 
                 if (folder) {
-                    await updateElement(draggedId, { parentId: folder.id });
-                    await updateElement(target.id, { parentId: folder.id });
+                    await updateElements([
+                        { id: draggedId, changes: { parentId: folder.id } },
+                        { id: target.id, changes: { parentId: folder.id } }
+                    ]);
                     
-                    // Layout
                     await reorganizeFolder(folder.id, [
                         { ...draggedElement, parentId: folder.id },
                         { ...target, parentId: folder.id }
@@ -296,13 +288,24 @@ export function CanvasEditor() {
                     { x: pos.x, y: pos.y, width: draggedElement.width, height: draggedElement.height },
                     parent
                 );
+                
                 if (!isStillInside) {
-                    // Dragged OUT
+                    // Ungroup dragged element
                     await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: null });
                     
-                    // Re-layout old parent
+                    // Check remaining siblings
                     const remaining = activeCanvas.elements.filter(el => el.parentId === parent.id && el.id !== draggedId);
-                    await reorganizeFolder(parent.id, remaining);
+                    
+                    if (remaining.length <= 1) {
+                        // Explode folder
+                        await deleteElement(parent.id); // deleteElement logic releases children automatically in Context, or we can explicit
+                        // Note: deleteElement in Context unparents children first.
+                        // So the remaining child will become parentId: null.
+                        // But its position might be weird (inside the deleted folder area).
+                        // That's fine for now.
+                    } else {
+                        await reorganizeFolder(parent.id, remaining);
+                    }
 
                     setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                     setIsDragging(false);
@@ -320,22 +323,20 @@ export function CanvasEditor() {
         
         const children = activeCanvas.elements.filter(el => el.parentId === draggedId);
         
-        await updateElement(draggedId, { x: pos.x, y: pos.y });
+        const updates = [
+            { id: draggedId, changes: { x: pos.x, y: pos.y } },
+            ...children.map(c => ({ id: c.id, changes: { x: c.x + deltaX, y: c.y + deltaY } }))
+        ];
+        
+        await updateElements(updates);
 
-        for (const child of children) {
-            await updateElement(child.id, { x: child.x + deltaX, y: child.y + deltaY });
-        }
     } else {
-        // If child of folder moved WITHIN folder?
-        // We might want to re-layout if dropped inside to snap to grid?
-        // "If I drag a node into a node ... placement ... will be side by side"
-        // Implicitly, moving items INSIDE the folder might also expect snap?
-        // Let's force layout on ANY move of a child inside folder to keep it tidy.
+        // Child move within folder
         if (draggedElement.parentId) {
-             await updateElement(draggedId, { x: pos.x, y: pos.y });
              const siblings = activeCanvas.elements.filter(el => el.parentId === draggedElement.parentId);
-             // Note: siblings includes the dragged element (updated pos). 
-             // We need to pass the updated version of draggedElement.
+             // We update the dragged pos locally first?
+             // Actually, we should just update it and let layout snap it back if needed
+             // OR snap it immediately.
              const updatedSiblings = siblings.map(s => s.id === draggedId ? { ...s, x: pos.x, y: pos.y } : s);
              await reorganizeFolder(draggedElement.parentId, updatedSiblings);
         } else {
@@ -348,8 +349,9 @@ export function CanvasEditor() {
     dragElementRef.current = null;
     dragStartPosRef.current = null;
 
-  }, [isDragging, localPositions, activeCanvas, updateElement, addElement]);
+  }, [isDragging, localPositions, activeCanvas, updateElement, addElement, updateElements, deleteElement]);
 
+  // Helpers
   const getElementPosition = (element: CanvasElement) => {
     const local = localPositions[element.id];
     if (local && isDragging && dragElementRef.current === element.id) {
@@ -380,11 +382,10 @@ export function CanvasEditor() {
 
   if (!activeCanvas) return <div className="flex-1 bg-[#0a0b10] flex items-center justify-center text-[#eca013]">Select Canvas...</div>;
 
-  // Sorting elements: Folders first (bottom), then others
   const sortedElements = [...activeCanvas.elements].sort((a, b) => {
       if (a.type === 'folder' && b.type !== 'folder') return -1;
       if (a.type !== 'folder' && b.type === 'folder') return 1;
-      return 0; // Keep original order otherwise
+      return 0; 
   });
 
   return (
@@ -440,11 +441,11 @@ export function CanvasEditor() {
                 return (
                     <div
                         key={element.id}
-                        className={`absolute border-2 border-dashed border-[#eca013]/50 rounded-lg transition-all ${isSelected ? 'border-[#eca013] bg-[#eca013]/5 z-10' : 'z-0'}`}
+                        className={`absolute border-2 border-dashed border-[#eca013]/50 rounded-lg transition-all element-container ${isSelected ? 'border-[#eca013] bg-[#eca013]/5 z-10' : 'z-0'}`}
                         style={{ left: pos.x, top: pos.y, width: element.width, height: element.height }}
                         onMouseDown={(e) => handleElementMouseDown(e, element)}
                     >
-                        <div className="absolute -top-6 left-0 px-2 py-0.5 bg-[#eca013] text-[#0a0b10] text-xs font-bold font-mono uppercase rounded-t tracking-wider flex items-center gap-2">
+                        <div className="absolute -top-6 left-0 px-2 py-0.5 bg-[#eca013] text-[#0a0b10] text-xs font-bold font-mono uppercase rounded-t tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing">
                              <span className="material-symbols-outlined text-[14px]">folder_open</span>
                              <input 
                                 className="bg-transparent outline-none w-24 placeholder-black/50"
@@ -461,7 +462,7 @@ export function CanvasEditor() {
             return (
                 <div
                     key={element.id}
-                    className={`absolute p-4 rounded-lg shadow-lg backdrop-blur-sm transition-all select-none
+                    className={`absolute rounded-lg shadow-lg backdrop-blur-sm transition-all select-none element-container flex flex-col
                         ${isSelected ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50" : "border border-[#eca013]/30 hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"}
                         ${element.type === "card" ? "bg-[#0a0b10]/90" : ""}
                     `}
@@ -473,54 +474,66 @@ export function CanvasEditor() {
                     }}
                     onMouseDown={(e) => handleElementMouseDown(e, element)}
                 >
-                    {/* Render Content based on type (Card/Sticky/Text) similar to before */}
-                     {element.type === "card" && (() => {
-                        const cardData = parseCardContent(getElementContent(element));
-                        return (
-                          <div className="flex flex-col gap-2 h-full">
-                            <input
-                              className="w-full bg-transparent font-bold text-base outline-none text-[#eca013] border-b border-[#eca013]/20 pb-1 tracking-wide uppercase font-display placeholder-[#eca013]/30"
-                              value={cardData.title}
-                              onChange={(e) => handleContentChange(element.id, serializeCardContent(e.target.value, cardData.description))}
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              placeholder="HEADER_TEXT"
-                            />
+                    {/* Visual Tab / Drag Handle */}
+                    <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
+                        ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}`}>
+                        <div className="flex gap-1">
+                            <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
+                            <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
+                            <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 flex-1 flex flex-col">
+                        {/* Content */}
+                        {element.type === "card" && (() => {
+                            const cardData = parseCardContent(getElementContent(element));
+                            return (
+                            <div className="flex flex-col gap-2 h-full">
+                                <input
+                                className="w-full bg-transparent font-bold text-base outline-none text-[#eca013] border-b border-[#eca013]/20 pb-1 tracking-wide uppercase font-display placeholder-[#eca013]/30"
+                                value={cardData.title}
+                                onChange={(e) => handleContentChange(element.id, serializeCardContent(e.target.value, cardData.description))}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                placeholder="HEADER_TEXT"
+                                />
+                                <textarea
+                                className="w-full flex-1 bg-transparent text-xs resize-none outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30 leading-relaxed"
+                                value={cardData.description}
+                                onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                placeholder="Input data stream..."
+                                />
+                            </div>
+                            );
+                        })()}
+                        {element.type === "sticky" && (
                             <textarea
-                              className="w-full flex-1 bg-transparent text-xs resize-none outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30 leading-relaxed"
-                              value={cardData.description}
-                              onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              placeholder="Input data stream..."
+                            className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-[#eca013] font-mono placeholder-[#eca013]/40"
+                            value={getElementContent(element)}
+                            onChange={(e) => handleContentChange(element.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
                             />
-                          </div>
-                        );
-                      })()}
-                    {element.type === "sticky" && (
-                        <textarea
-                          className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-[#eca013] font-mono placeholder-[#eca013]/40"
-                          value={getElementContent(element)}
-                          onChange={(e) => handleContentChange(element.id, e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                        />
-                    )}
-                    {element.type === "text" && (
-                         <textarea
-                          className="w-full bg-transparent text-base resize-none outline-none text-[#eca013] font-mono phosphor-glow placeholder-[#eca013]/30"
-                          value={getElementContent(element)}
-                          onChange={(e) => handleContentChange(element.id, e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                        />
-                    )}
+                        )}
+                        {element.type === "text" && (
+                            <textarea
+                            className="w-full bg-transparent text-base resize-none outline-none text-[#eca013] font-mono phosphor-glow placeholder-[#eca013]/30"
+                            value={getElementContent(element)}
+                            onChange={(e) => handleContentChange(element.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            />
+                        )}
+                    </div>
                 </div>
             );
         })}
       </div>
-       <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm">
-        <span className="font-bold text-[#eca013]">CMD:</span> DRAG_ONTO_NODE=GROUP // DRAG_OUT=UNGROUP
+       <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm pointer-events-none">
+        <span className="font-bold text-[#eca013]">CMD:</span> GRAB_TAB=MOVE // DRAG_ONTO_NODE=GROUP // DRAG_OUT=UNGROUP
       </div>
     </div>
   );
