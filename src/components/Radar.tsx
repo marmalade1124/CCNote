@@ -74,15 +74,32 @@ export function Radar({ elements, viewOffset, zoom, viewportSize, onMove }: Rada
     }, []);
 
     const worldToRadar = (wx: number, wy: number) => {
-        if (bounds.width === 0 || bounds.height === 0) return { x: 0, y: 0 };
-        const rx = ((wx - bounds.x) / bounds.width) * radarSize.width;
-        const ry = ((wy - bounds.y) / bounds.height) * radarSize.height;
+        if (bounds.width === 0 || bounds.height === 0 || radarSize.width === 0) return { x: 0, y: 0 };
+        
+        const scaleX = radarSize.width / bounds.width;
+        const scaleY = radarSize.height / bounds.height;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const offsetX = (radarSize.width - (bounds.width * scale)) / 2;
+        const offsetY = (radarSize.height - (bounds.height * scale)) / 2;
+
+        const rx = offsetX + (wx - bounds.x) * scale;
+        const ry = offsetY + (wy - bounds.y) * scale;
         return { x: rx, y: ry };
     };
 
     const radarToWorld = (rx: number, ry: number) => {
-        const wx = (rx / radarSize.width) * bounds.width + bounds.x;
-        const wy = (ry / radarSize.height) * bounds.height + bounds.y;
+        if (bounds.width === 0 || bounds.height === 0 || radarSize.width === 0) return { x: bounds.x, y: bounds.y };
+
+        const scaleX = radarSize.width / bounds.width;
+        const scaleY = radarSize.height / bounds.height;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const offsetX = (radarSize.width - (bounds.width * scale)) / 2;
+        const offsetY = (radarSize.height - (bounds.height * scale)) / 2;
+
+        const wx = ((rx - offsetX) / scale) + bounds.x;
+        const wy = ((ry - offsetY) / scale) + bounds.y;
         return { x: wx, y: wy };
     };
 
