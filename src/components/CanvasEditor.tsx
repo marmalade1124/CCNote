@@ -243,6 +243,11 @@ export function CanvasEditor() {
     debouncedUpdateContent(elementId, content);
   };
 
+  const handleFolderContentChange = (elementId: string, newTitle: string, currentCollapsed: boolean) => {
+      const content = serializeFolderContent(newTitle, currentCollapsed);
+      handleContentChange(elementId, content);
+  };
+
   const handleInputKeyDown = (
       e: React.KeyboardEvent, 
       elementId: string, 
