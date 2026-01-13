@@ -7,6 +7,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { Radar } from "./Radar";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkWikiLink from "remark-wiki-link";
 
 const STICKY_COLORS = [
   "#eca01340", "#39ff1440", "#00f0ff40", "#ff003c40", "#b026ff40",
@@ -128,6 +129,28 @@ export function CanvasEditor() {
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
+    
+    // Auto-Connect Logic ([[Link]])
+    const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
+    if (matches.length > 0 && activeCanvas) {
+         matches.forEach(match => {
+             const targetName = match[1];
+             const target = activeCanvas.elements.find(el => {
+                 // Check diverse content types
+                 if (el.type === 'card' && el.content.startsWith(targetName + '||')) return true;
+                 if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(targetName) || el.content === targetName)) return true;
+                 if (el.type === 'folder') { const p = JSON.parse(el.content); return p.title === targetName; }
+                 if (el.type === 'image') { const p = JSON.parse(el.content); return p.title === targetName; }
+                 return false;
+             });
+             
+             if (target && target.id !== elementId) {
+                 // Check if connection exists? Context handles duplicate check usually, or we check here.
+                 // Context addConnection checks duplicates.
+                 addConnection(elementId, target.id);
+             }
+         });
+    }
   }, 500);
 
   // Reset view on canvas change (optional, but good UX)
@@ -146,19 +169,126 @@ export function CanvasEditor() {
       const content = serializeFolderContent(newTitle, currentCollapsed);
       handleContentChange(elementId, content);
   };
+  
+  // Tag System State
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  
+  // Extract Tags
+  const availableTags = useMemo(() => {
+      const tags = new Set<string>();
+      activeCanvas?.elements.forEach(el => {
+          const matches = el.content.match(/#[a-zA-Z0-9_\-]+/g);
+          if (matches) matches.forEach(t => tags.add(t));
+      });
+      return Array.from(tags).sort();
+  }, [activeCanvas?.elements]);
+
+  // Markdown Components (Reusable)
+  const markdownComponents = useMemo(() => ({
+      h1: ({node, ...props}: any) => <h1 className="text-sm font-bold border-b border-[#eca013]/20 pb-1 mb-2 mt-1" {...props} />,
+      h2: ({node, ...props}: any) => <h2 className="text-xs font-bold mb-1 mt-2" {...props} />,
+      ul: ({node, ...props}: any) => <ul className="list-disc pl-4 mb-2" {...props} />,
+      ol: ({node, ...props}: any) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+      li: ({node, ...props}: any) => <li className="mb-0.5" {...props} />,
+      code: ({node, ...props}: any) => <code className="bg-[#eca013]/10 px-1 rounded text-[#eca013]" {...props} />,
+      blockquote: ({node, ...props}: any) => <blockquote className="border-l-2 border-[#eca013]/50 pl-2 italic my-2 opacity-80" {...props} />,
+      a: ({node, href, children, ...props}: any) => {
+          if (href?.startsWith('#')) {
+              return (
+                  <a 
+                      href={href} 
+                      className="text-[#39ff14] hover:underline cursor-pointer font-bold decoration-dotted underline-offset-2"
+                      onClick={(e) => {
+                          e.preventDefault();
+                          const targetName = href.substring(1); 
+                          const target = activeCanvas?.elements.find(el => {
+                               if (el.type === 'card' && el.content.startsWith(targetName + '||')) return true;
+                               if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(targetName) || el.content === targetName)) return true;
+                               if (el.type === 'folder') { try { return JSON.parse(el.content).title === targetName; } catch(e){} }
+                               if (el.type === 'image') { try { return JSON.parse(el.content).title === targetName; } catch(e){} }
+                               return false;
+                          });
+                          if (target) {
+                               window.dispatchEvent(new CustomEvent('canvas:pan-to', { detail: { x: target.x + target.width/2, y: target.y + target.height/2, zoom: 1 } }));
+                          } else {
+                              alert(`Node "${targetName}" not found.`);
+                          }
+                      }}
+                      {...props}
+                  >
+                      {children}
+                  </a>
+              );
+          }
+          return <a href={href} className="text-[#eca013] underline opacity-80 hover:opacity-100" target="_blank" {...props}>{children}</a>;
+      },
+      img: ({node, src, alt, ...props}: any) => {
+          // Check for Wiki Link Transclusion (src will be the permalink if using default behavior, or we need to check format)
+          // remark-wiki-link treats ![[Foo]] as image with src="Foo" (or hrefTemplate result?)
+          // Actually, it usually respects hrefTemplate for images too? Let's check.
+          // If src starts with # (from our template), it's a transclusion.
+          
+          let targetName = src;
+          let isTransclusion = false;
+
+          // If it matches our wiki link template output (startswith #)
+          if (src?.startsWith('#')) {
+              targetName = src.substring(1);
+              isTransclusion = true;
+          } else if (!src?.startsWith('http') && !src?.startsWith('data:')) {
+               // Assuming relative path is transclusion in our context
+               isTransclusion = true;
+          }
+
+          if (isTransclusion) {
+               const target = activeCanvas?.elements.find(el => {
+                   if (el.type === 'card' && el.content.startsWith(targetName + '||')) return true;
+                   if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(targetName) || el.content === targetName)) return true;
+                   if (el.type === 'folder') { try { return JSON.parse(el.content).title === targetName; } catch(e){} }
+                    return false;
+               });
+
+               if (target) {
+                   // Extract clean content for preview
+                   let previewText = target.content;
+                   if (target.type === 'card') previewText = target.content.split('||')[1];
+                   if (target.type === 'folder') previewText = "📁 Group Content";
+                   
+                   return (
+                       <div className="my-2 border-l-2 border-[#39ff14]/50 bg-[#39ff14]/5 pl-3 py-2 rounded-r text-xs font-mono">
+                           <div 
+                               className="font-bold text-[#39ff14] mb-1 cursor-pointer hover:underline flex items-center gap-1"
+                               onClick={(e) => {
+                                   e.stopPropagation(); // prevent edit mode
+                                   window.dispatchEvent(new CustomEvent('canvas:pan-to', { detail: { x: target.x + target.width/2, y: target.y + target.height/2, zoom: 1 } }));
+                               }}
+                           >
+                               <span className="material-symbols-outlined text-[10px]">link</span>
+                               {targetName}
+                           </div>
+                           <div className="text-[#eca013]/70 italic line-clamp-3">
+                               {previewText.substring(0, 150)}...
+                           </div>
+                       </div>
+                   );
+               }
+               return <div className="text-red-500/50 text-[10px] border border-red-500/20 rounded px-1 inline-block">![{targetName}] (Missing)</div>;
+          }
+
+          return <img src={src} alt={alt} className="max-w-full rounded border border-[#eca013]/20" {...props} />;
+      }
+  }), [activeCanvas?.elements]);
 
   // Search Navigation Listener
   useEffect(() => {
-      const handlePanTo = (e: Event) => {
+     // ... (existing listener)
+     const handlePanTo = (e: Event) => {
           const detail = (e as CustomEvent).detail;
           if (canvasRef.current) {
                const rect = canvasRef.current.getBoundingClientRect();
                const targetZoom = detail.zoom || 1;
                setZoom(targetZoom);
                
-               // Center the target coordinate
-               // ScreenCenter = (World * Zoom) + Offset
-               // Offset = ScreenCenter - (World * Zoom)
                const newOffset = {
                    x: (rect.width / 2) - (detail.x * targetZoom),
                    y: (rect.height / 2) - (detail.y * targetZoom)
@@ -800,7 +930,10 @@ export function CanvasEditor() {
                                 transform: `rotate(${element.rotation || 0}deg)`,
                                 backgroundColor: element.type === 'sticky' ? element.color : undefined,
                                 zIndex: isSelected ? 50 : (element.parentId ? 20 : 10),
-                                pointerEvents: 'auto'
+                                pointerEvents: 'auto',
+                                opacity: activeTag && !element.content.includes(activeTag) ? 0.1 : 1,
+                                filter: activeTag && !element.content.includes(activeTag) ? 'grayscale(100%) blur(1px)' : 'none',
+                                transition: 'all 0.2s ease-out, opacity 0.3s ease-in-out, filter 0.3s'
                             }}
                             onMouseDown={(e) => handleElementMouseDown(e, element)}
                         >
@@ -876,16 +1009,8 @@ export function CanvasEditor() {
                                         ) : (
                                             <div className="w-full flex-1 text-xs text-[#eca013]/80 font-mono leading-relaxed overflow-hidden markdown-preview">
                                                 <ReactMarkdown 
-                                                    remarkPlugins={[remarkGfm]}
-                                                    components={{
-                                                        h1: ({node, ...props}) => <h1 className="text-sm font-bold border-b border-[#eca013]/20 pb-1 mb-2 mt-1" {...props} />,
-                                                        h2: ({node, ...props}) => <h2 className="text-xs font-bold mb-1 mt-2" {...props} />,
-                                                        ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
-                                                        ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
-                                                        li: ({node, ...props}) => <li className="mb-0.5" {...props} />,
-                                                        code: ({node, ...props}) => <code className="bg-[#eca013]/10 px-1 rounded text-[#eca013]" {...props} />,
-                                                        blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-[#eca013]/50 pl-2 italic my-2 opacity-80" {...props} />,
-                                                    }}
+                                                    remarkPlugins={[remarkGfm, [remarkWikiLink, { hrefTemplate: (permalink: string) => `#${permalink}` }]]}
+                                                    components={markdownComponents}
                                                 >
                                                     {cardData.description || "_No Data_"}
                                                 </ReactMarkdown>
@@ -905,7 +1030,12 @@ export function CanvasEditor() {
                                         />
                                     ) : (
                                         <div className="w-full h-full text-sm font-medium text-[#eca013] font-mono overflow-hidden markdown-preview">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{getElementContent(element)}</ReactMarkdown>
+                                            <ReactMarkdown 
+                                                remarkPlugins={[remarkGfm, [remarkWikiLink, { hrefTemplate: (permalink: string) => `#${permalink}` }]]}
+                                                components={markdownComponents}
+                                            >
+                                                {getElementContent(element)}
+                                            </ReactMarkdown>
                                         </div>
                                     )
                                 )}
@@ -921,12 +1051,8 @@ export function CanvasEditor() {
                                     ) : (
                                         <div className="w-full h-full text-base text-[#eca013] font-mono phosphor-glow overflow-hidden markdown-preview">
                                              <ReactMarkdown 
-                                                remarkPlugins={[remarkGfm]}
-                                                components={{
-                                                    h1: ({node, ...props}) => <h1 className="text-xl font-bold border-b border-[#eca013]/30 pb-2 mb-2" {...props} />,
-                                                    ul: ({node, ...props}) => <ul className="list-disc pl-5" {...props} />,
-                                                    li: ({node, ...props}) => <li className="mb-1" {...props} />
-                                                }}
+                                                remarkPlugins={[remarkGfm, [remarkWikiLink, { hrefTemplate: (permalink: string) => `#${permalink}` }]]}
+                                                components={markdownComponents}
                                              >
                                                 {getElementContent(element)}
                                              </ReactMarkdown>
@@ -942,6 +1068,38 @@ export function CanvasEditor() {
       <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm pointer-events-none z-40">
         <span className="font-bold text-[#eca013]">CMD:</span> SCRL=ZOOM // CLICK_DRAG=PAN
       </div>
+
+      {/* Tag Lens HUD */}
+      {availableTags.length > 0 && (
+          <div className="absolute top-24 left-6 z-40 flex flex-col gap-2 animate-in slide-in-from-left duration-300">
+              <div className="text-[10px] font-bold text-[#eca013]/50 uppercase tracking-widest pl-1">DATA_LENS</div>
+              <div className="flex flex-col items-start gap-1">
+                  {availableTags.map(tag => (
+                      <button
+                          key={tag}
+                          onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                          className={`
+                              px-2 py-1 rounded text-xs font-mono transition-all border
+                              ${activeTag === tag 
+                                  ? "bg-[#eca013] text-[#0a0b10] border-[#eca013] shadow-[0_0_10px_rgba(236,160,19,0.5)] translate-x-1" 
+                                  : "bg-[#0a0b10]/80 text-[#eca013]/70 border-[#eca013]/20 hover:border-[#eca013]/50 hover:text-[#eca013]"
+                              }
+                          `}
+                      >
+                          {tag}
+                      </button>
+                  ))}
+                  {activeTag && (
+                      <button 
+                          onClick={() => setActiveTag(null)}
+                          className="mt-2 text-[10px] text-[#eca013]/50 hover:text-[#eca013] uppercase tracking-wider pl-1"
+                      >
+                          [RESET_LENS]
+                      </button>
+                  )}
+              </div>
+          </div>
+      )}
 
       {/* Radar Minimap */}
       <div className="absolute bottom-6 right-6 z-50">
