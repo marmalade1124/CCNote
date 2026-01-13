@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
 export const metadata: Metadata = {
   title: "Canvas Notes",
-  description: "Your ideas, organized visually.",
+  description: "Infinite canvas for your thoughts",
 };
 
 export default function RootLayout({
@@ -19,23 +13,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="light" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
       <head>
-        <Script
-          id="remove-extension-attrs"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              document.documentElement.removeAttribute('data-jetski-tab-id');
-            `,
-          }}
-        />
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=material_symbols_outlined"
         />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${inter.variable} antialiased`} suppressHydrationWarning>{children}</body>
+      <body className="antialiased overflow-hidden font-display bg-[#0a0b10] text-[#eca013]" suppressHydrationWarning>
+        <div className="scanlines"></div>
+        <div className="vignette"></div>
+        {children}
+      </body>
     </html>
   );
 }

@@ -5,7 +5,14 @@ import { useCanvas } from "@/context/CanvasContext";
 import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
 
-const STICKY_COLORS = ["#fff9c4", "#b3e5fc", "#c8e6c9", "#ffccbc", "#e1bee7"];
+// Retro-compatible sticky colors (tinted rather than solid pastel)
+const STICKY_COLORS = [
+  "#eca01340", // Amber tint
+  "#39ff1440", // Green tint
+  "#00f0ff40", // Cyan tint
+  "#ff003c40", // Red tint
+  "#b026ff40", // Purple tint
+];
 
 // Card content helpers (stores title|description format)
 interface CardContent {
@@ -56,7 +63,7 @@ export function CanvasEditor() {
         y,
         width: 300,
         height: 180,
-        content: serializeCardContent("Card Title", "Add description here..."),
+        content: serializeCardContent("Note_Alpha", "Enter data here..."),
         rotation: 0,
       });
       setActiveTool("select");
@@ -67,7 +74,7 @@ export function CanvasEditor() {
         y,
         width: 200,
         height: 200,
-        content: "New Note",
+        content: "Quick_Memo",
         color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
         rotation: Math.random() * 6 - 3,
       });
@@ -79,7 +86,7 @@ export function CanvasEditor() {
         y,
         width: 200,
         height: 40,
-        content: "New Text",
+        content: ">_ TYPE_HERE",
         rotation: 0,
       });
       setActiveTool("select");
@@ -97,7 +104,6 @@ export function CanvasEditor() {
       } else if (connectionStart !== element.id) {
         addConnection(connectionStart, element.id);
         setConnectionStart(null);
-        // Optional: keep tool active for chaining? Or reset? Let's keep active for now.
       }
       return;
     }
@@ -115,9 +121,8 @@ export function CanvasEditor() {
     });
   };
 
-  // Optimistic local updates during drag (no DB calls)
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (activeTool === "connect") return; // No dragging in connect mode
+    if (activeTool === "connect") return; 
 
     if (!isDragging || !dragElementRef.current) return;
 
@@ -130,7 +135,6 @@ export function CanvasEditor() {
     }));
   }, [isDragging, dragOffset, activeTool]);
 
-  // Save to DB only on mouse up
   const handleMouseUp = useCallback(() => {
     if (isDragging && dragElementRef.current) {
       const pos = localPositions[dragElementRef.current];
@@ -142,10 +146,8 @@ export function CanvasEditor() {
     dragElementRef.current = null;
   }, [isDragging, localPositions, updateElement]);
 
-  // Local content state for smooth typing
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
-  // Debounced save to DB
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
   }, 500);
@@ -155,7 +157,6 @@ export function CanvasEditor() {
     debouncedUpdateContent(elementId, content);
   };
 
-  // Get content (prefer local during editing)
   const getElementContent = (element: CanvasElement) => {
     return localContent[element.id] ?? element.content;
   };
@@ -175,7 +176,6 @@ export function CanvasEditor() {
     }
   };
 
-  // Get element position (prefer local during drag)
   const getElementPosition = (element: CanvasElement) => {
     const local = localPositions[element.id];
     if (local && isDragging && dragElementRef.current === element.id) {
@@ -188,20 +188,20 @@ export function CanvasEditor() {
     const pos = getElementPosition(element);
     return {
       x: pos.x + element.width / 2,
-      y: pos.y + (element.type === "text" ? 20 : element.height / 2), // Approx for text
+      y: pos.y + (element.type === "text" ? 20 : element.height / 2), 
     };
   };
 
   if (!activeCanvas) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#f6f7f8] dark:bg-[#101c22]">
-        <div className="text-center">
-          <div className="size-20 mx-auto mb-6 bg-[#13a4ec]/10 rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-4xl text-[#13a4ec]">note_add</span>
+      <div className="flex-1 flex items-center justify-center bg-[#0a0b10] bg-[radial-gradient(#1a160f_1px,transparent_1px)] bg-[size:32px_32px]">
+        <div className="text-center p-8 border border-[#eca013]/20 bg-[#0a0b10]/90 rounded-lg shadow-[0_0_20px_rgba(236,160,19,0.1)]">
+          <div className="size-20 mx-auto mb-6 bg-[#eca013]/10 rounded-full flex items-center justify-center border border-[#eca013]/30">
+            <span className="material-symbols-outlined text-4xl text-[#eca013] phosphor-glow">terminal</span>
           </div>
-          <h2 className="text-xl font-bold text-[#111618] dark:text-white mb-2">Select a canvas</h2>
-          <p className="text-sm text-[#617c89] max-w-xs">
-            Choose a canvas from the sidebar or create a new one.
+          <h2 className="text-xl font-bold text-[#eca013] mb-2 font-display uppercase tracking-widest phosphor-glow">Select Node Map</h2>
+          <p className="text-sm text-[#eca013]/60 max-w-xs font-mono">
+            &gt; WAITING_FOR_INPUT...
           </p>
         </div>
       </div>
@@ -210,88 +210,87 @@ export function CanvasEditor() {
 
   return (
     <div
-      className="flex-1 flex flex-col relative overflow-hidden bg-[#f6f7f8] dark:bg-[#101c22]"
+      className="flex-1 flex flex-col relative overflow-hidden bg-[#0a0b10]"
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
-      {/* Toolbar */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-1.5 bg-white dark:bg-[#1c2a32] shadow-xl rounded-xl border border-[#f0f3f4] dark:border-[#2d3748]">
+      {/* Retro Grid Background */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#1a160f_1px,transparent_1px)] bg-[size:32px_32px] opacity-100"></div>
+
+      {/* Floating Toolbar */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-2 bg-[#0a0b10]/90 shadow-[0_0_15px_rgba(236,160,19,0.2)] rounded border border-[#eca013] backdrop-blur-md">
         <button
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "select" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          className={`p-2 rounded transition-all tactile-btn ${
+            activeTool === "select" ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"
           }`}
           onClick={() => setActiveTool("select")}
-          title="Select"
+          title="SELECT_TOOL"
         >
           <span className="material-symbols-outlined">near_me</span>
         </button>
         <button
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "connect" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          className={`p-2 rounded transition-all tactile-btn ${
+            activeTool === "connect" ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"
           }`}
           onClick={() => setActiveTool("connect")}
-          title="Connect"
+          title="LINK_NODES"
         >
-          <span className="material-symbols-outlined">timeline</span>
+          <span className="material-symbols-outlined">hub</span>
         </button>
-        <div className="w-px h-6 bg-[#f0f3f4] dark:bg-[#2d3748] mx-1"></div>
+        <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
         <button
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "card" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          className={`p-2 rounded transition-all tactile-btn ${
+            activeTool === "card" ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"
           }`}
           onClick={() => setActiveTool("card")}
-          title="Add Card"
+          title="ADD_NODE"
         >
           <span className="material-symbols-outlined">crop_landscape</span>
         </button>
         <button
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "sticky" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          className={`p-2 rounded transition-all tactile-btn ${
+            activeTool === "sticky" ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"
           }`}
           onClick={() => setActiveTool("sticky")}
-          title="Add Sticky Note"
+          title="ADD_MEMO"
         >
           <span className="material-symbols-outlined">sticky_note_2</span>
         </button>
         <button
-          className={`p-2 rounded-lg transition-colors ${
-            activeTool === "text" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          className={`p-2 rounded transition-all tactile-btn ${
+            activeTool === "text" ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"
           }`}
           onClick={() => setActiveTool("text")}
-          title="Add Text"
+          title="ADD_DATA"
         >
           <span className="material-symbols-outlined">text_fields</span>
         </button>
       </div>
 
-      {/* Canvas Name */}
-      <div className="absolute top-6 left-6 z-20 flex items-center gap-3 bg-white/90 dark:bg-[#1c2a32]/90 px-3 py-2 rounded-lg shadow-sm">
-        <div className="size-8 bg-gradient-to-br from-[#13a4ec] to-[#0d7ab8] rounded-full flex items-center justify-center text-white font-bold text-xs">
-          {activeCanvas.name.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <h1 className="text-sm font-bold text-[#111618] dark:text-white">{activeCanvas.name}</h1>
-          <p className="text-[10px] text-[#617c89]">
-            {activeCanvas.elements.length} element{activeCanvas.elements.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+      {/* Canvas Info Breadcrumbs */}
+      <div className="absolute top-6 left-6 z-20 flex items-center gap-2 text-[10px] font-bold tracking-widest bg-[#0a0b10]/80 px-3 py-1.5 rounded border border-[#eca013]/20 backdrop-blur-sm">
+        <span className="text-[#eca013]/50">ROOT</span>
+        <span className="text-[#eca013]/30">/</span>
+        <span className="text-[#eca013]/50">CANVAS</span>
+        <span className="text-[#eca013]/30">/</span>
+        <span className="text-[#eca013] phosphor-glow uppercase">{activeCanvas.name}</span>
       </div>
 
       {/* Canvas Area */}
       <div
         ref={canvasRef}
-        className="flex-1 dot-grid relative cursor-crosshair overflow-hidden"
+        className="flex-1 relative cursor-crosshair overflow-hidden"
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{ cursor: activeTool === "connect" ? "crosshair" : "default" }}
       >
-        {/* Connections SVG Layer */}
+        {/* Connections Layer */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
           <defs>
             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af" />
+              <polygon points="0 0, 10 3.5, 0 7" fill="#eca013" />
             </marker>
           </defs>
           {activeCanvas.connections?.map((conn) => {
@@ -309,12 +308,12 @@ export function CanvasEditor() {
                   y1={start.y}
                   x2={end.x}
                   y2={end.y}
-                  stroke="#9ca3af"
-                  strokeWidth="2"
+                  stroke="#eca013"
+                  strokeWidth="1.5"
                   markerEnd="url(#arrowhead)"
-                  opacity="0.6"
+                  opacity="0.5"
+                  strokeDasharray="4 2"
                 />
-                {/* Invisible wider line for easier clicking/deleting? Could add later */}
               </g>
             );
           })}
@@ -327,14 +326,13 @@ export function CanvasEditor() {
           return (
             <div
               key={element.id}
-              className={`absolute p-4 rounded-xl shadow-lg border transition-all ${
-                // Different cursor if using connect tool
-                activeTool === "connect" ? "cursor-pointer hover:ring-2 hover:ring-[#13a4ec]" : "cursor-move"
+              className={`absolute p-4 rounded-lg shadow-lg backdrop-blur-sm transition-all ${
+                activeTool === "connect" ? "cursor-pointer hover:ring-1 hover:ring-[#eca013]" : "cursor-move"
               } select-none ${
                 selectedElement === element.id || isConnectingStart
-                  ? "ring-2 ring-[#13a4ec] shadow-xl"
-                  : "border-[#f0f3f4] dark:border-[#2d3748] hover:shadow-xl"
-              } ${element.type === "card" ? "bg-white dark:bg-[#1c2a32]" : ""} ${element.type === "text" ? "bg-transparent" : ""}`}
+                  ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50"
+                  : "border border-[#eca013]/30 hover:border-[#eca013] hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"
+              } ${element.type === "card" ? "bg-[#0a0b10]/80" : ""} ${element.type === "text" ? "bg-transparent border-none" : ""}`}
               style={{
                 left: pos.x,
                 top: pos.y,
@@ -346,26 +344,34 @@ export function CanvasEditor() {
               }}
               onMouseDown={(e) => handleElementMouseDown(e, element)}
             >
+              {/* Element Header (ID) */}
+              {element.type !== 'text' && (
+                <div className="flex justify-between items-start mb-2 opacity-50">
+                  <span className="text-[9px] text-[#eca013] font-mono">ID: {element.id.slice(0, 4).toUpperCase()}</span>
+                  <span className="material-symbols-outlined text-[12px] text-[#eca013]">drag_handle</span>
+                </div>
+              )}
+
               {element.type === "card" && (() => {
                 const cardData = parseCardContent(getElementContent(element));
                 return (
                   <div className="flex flex-col gap-2 h-full">
                     <input
-                      className="w-full bg-transparent font-bold text-lg outline-none text-[#111618] dark:text-white border-b border-[#f0f3f4] dark:border-[#2d3748] pb-2"
+                      className="w-full bg-transparent font-bold text-base outline-none text-[#eca013] border-b border-[#eca013]/20 pb-1 tracking-wide uppercase font-display placeholder-[#eca013]/30"
                       value={cardData.title}
                       onChange={(e) => handleContentChange(element.id, serializeCardContent(e.target.value, cardData.description))}
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
-                      placeholder="Card Title"
+                      placeholder="HEADER_TEXT"
                       disabled={activeTool === "connect"}
                     />
                     <textarea
-                      className="w-full flex-1 bg-transparent text-sm resize-none outline-none text-[#617c89] dark:text-[#a0aec0]"
+                      className="w-full flex-1 bg-transparent text-xs resize-none outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30 leading-relaxed"
                       value={cardData.description}
                       onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
-                      placeholder="Add description..."
+                      placeholder="Input data stream..."
                       disabled={activeTool === "connect"}
                     />
                   </div>
@@ -373,29 +379,31 @@ export function CanvasEditor() {
               })()}
               {element.type === "sticky" && (
                 <textarea
-                  className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-gray-800"
+                  className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-[#eca013] font-mono placeholder-[#eca013]/40"
                   value={getElementContent(element)}
                   onChange={(e) => handleContentChange(element.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={activeTool === "connect"}
+                  placeholder="MEMO..."
                 />
               )}
               {element.type === "text" && (
                 <textarea
-                  className="w-full bg-transparent text-base resize-none outline-none text-[#111618] dark:text-white"
+                  className="w-full bg-transparent text-base resize-none outline-none text-[#eca013] font-mono phosphor-glow placeholder-[#eca013]/30"
                   value={getElementContent(element)}
                   onChange={(e) => handleContentChange(element.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   rows={1}
                   disabled={activeTool === "connect"}
+                  placeholder=">_ DATA"
                 />
               )}
 
               {selectedElement === element.id && activeTool !== "connect" && (
                 <button
-                  className="absolute -top-3 -right-3 size-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-lg"
+                  className="absolute -top-3 -right-3 size-6 bg-[#1a160f] border border-red-500 text-red-500 rounded flex items-center justify-center hover:bg-red-500 hover:text-[#0a0b10] shadow-[0_0_10px_rgba(239,68,68,0.4)] transition-all"
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteElement(element.id);
@@ -410,19 +418,19 @@ export function CanvasEditor() {
         })}
 
         {activeCanvas.elements.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center opacity-50">
-              <span className="material-symbols-outlined text-6xl text-[#617c89] mb-4">touch_app</span>
-              <p className="text-[#617c89]">Click anywhere to add elements</p>
-              <p className="text-[#617c89] text-sm mt-1">Select a tool from the toolbar above</p>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center p-6 border border-[#eca013]/10 bg-[#eca013]/5 rounded">
+                <span className="material-symbols-outlined text-4xl text-[#eca013]/40 mb-2">touch_app</span>
+                <p className="text-[#eca013]/60 font-mono text-xs tracking-widest">&gt; CANVAS_EMPTY</p>
+                <p className="text-[#eca013]/40 text-[10px] uppercase mt-1">Initialize elements via toolbar</p>
+              </div>
             </div>
-          </div>
         )}
       </div>
 
-      <div className="absolute bottom-6 left-6 text-xs text-[#617c89] bg-white/80 dark:bg-[#1c2a32]/80 px-3 py-2 rounded-lg">
-        <span className="font-semibold">Tips:</span> Click to add • Drag to move • Delete key to remove
-        {activeTool === "connect" && <span className="text-[#13a4ec] font-bold ml-2"> • Click two elements to connect!</span>}
+      <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm">
+        <span className="font-bold text-[#eca013]">CMD:</span> CLICK=ADD // DRAG=MOVE // DEL=PURGE
+        {activeTool === "connect" && <span className="text-[#39ff14] font-bold ml-2 animate-pulse"> &gt;&gt; SELECT_TARGET_NODE</span>}
       </div>
     </div>
   );

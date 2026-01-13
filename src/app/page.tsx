@@ -21,122 +21,121 @@ export default function LoginPage() {
     if (email === VALID_USERNAME && password === VALID_PASSWORD) {
       router.push("/dashboard");
     } else {
-      setError("Invalid username or password");
+      setError("ACCESS_DENIED: INVALID_CREDENTIALS");
     }
   };
 
   return (
-    <div className="bg-[#f6f7f8] dark:bg-[#101c22] min-h-screen flex flex-col font-[family-name:var(--font-inter)]">
+    <div className="bg-[#0a0b10] min-h-screen flex flex-col font-display text-[#eca013] overflow-hidden relative">
+      {/* Background Grid */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#1a160f_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      
       {/* Top Navigation */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#f0f3f4] dark:border-white/10 px-6 py-3 bg-white dark:bg-[#101c22]">
-        <div className="flex items-center gap-3 text-[#111618] dark:text-white">
-          <div className="size-6 text-[#13a4ec]">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path
-                clipRule="evenodd"
-                d="M39.475 21.6262C40.358 21.4363 40.6863 21.5589 40.7581 21.5934C40.7876 21.655 40.8547 21.857 40.8082 22.3336C40.7408 23.0255 40.4502 24.0046 39.8572 25.2301C38.6799 27.6631 36.5085 30.6631 33.5858 33.5858C30.6631 36.5085 27.6632 38.6799 25.2301 39.8572C24.0046 40.4502 23.0255 40.7407 22.3336 40.8082C21.8571 40.8547 21.6551 40.7875 21.5934 40.7581C21.5589 40.6863 21.4363 40.358 21.6262 39.475C21.8562 38.4054 22.4689 36.9657 23.5038 35.2817C24.7575 33.2417 26.5497 30.9744 28.7621 28.762C30.9744 26.5497 33.2417 24.7574 35.2817 23.5037C36.9657 22.4689 38.4054 21.8562 39.475 21.6262ZM4.41189 29.2403L18.7597 43.5881C19.8813 44.7097 21.4027 44.9179 22.7217 44.7893C24.0585 44.659 25.5148 44.1631 26.9723 43.4579C29.9052 42.0387 33.2618 39.5667 36.4142 36.4142C39.5667 33.2618 42.0387 29.9052 43.4579 26.9723C44.1631 25.5148 44.659 24.0585 44.7893 22.7217C44.9179 21.4027 44.7097 19.8813 43.5881 18.7597L29.2403 4.41187C27.8527 3.02428 25.8765 3.02573 24.2861 3.36776C22.6081 3.72863 20.7334 4.58419 18.8396 5.74801C16.4978 7.18716 13.9881 9.18353 11.5858 11.5858C9.18354 13.988 7.18717 16.4978 5.74802 18.8396C4.58421 20.7334 3.72865 22.6081 3.36778 24.2861C3.02574 25.8765 3.02429 27.8527 4.41189 29.2403Z"
-                fill="currentColor"
-                fillRule="evenodd"
-              />
-            </svg>
+      <header className="flex items-center justify-between whitespace-nowrap border-b border-[#eca013]/20 px-6 py-3 bg-[#0a0b10] z-10">
+        <div className="flex items-center gap-3 text-[#eca013]">
+          <div className="size-6 text-[#eca013]">
+            <span className="material-symbols-outlined text-[24px] phosphor-glow">terminal</span>
           </div>
-          <h2 className="text-[#111618] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">
-            Canvas Notes
+          <h2 className="text-[#eca013] text-lg font-bold leading-tight tracking-[0.1em] phosphor-glow uppercase">
+            System: Terminal_Auth
           </h2>
         </div>
+        <div className="text-[10px] font-mono text-[#eca013]/50">SECURE_CONNECTION_ESTABLISHED</div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-        <div className="w-full max-w-[440px] bg-white dark:bg-[#1c2a33] p-8 md:p-10 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-white/5">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 z-10">
+        <div className="w-full max-w-[440px] bg-[#0a0b10]/90 p-8 md:p-10 rounded shadow-[0_0_50px_rgba(236,160,19,0.1)] border border-[#eca013]/30 backdrop-blur-sm relative overflow-hidden">
+            {/* Corner Markers */}
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#eca013]"></div>
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#eca013]"></div>
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#eca013]"></div>
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#eca013]"></div>
+
           {/* Headline Section */}
-          <div className="mb-8">
-            <h1 className="text-[#111618] dark:text-white tracking-tight text-[32px] font-bold leading-tight text-center">
-              Welcome back
+          <div className="mb-8 text-center">
+            <h1 className="text-[#eca013] tracking-widest text-2xl font-bold leading-tight uppercase phosphor-glow">
+              &gt; AUTHENTICATE
             </h1>
-            <p className="text-[#617c89] dark:text-gray-400 text-base font-normal leading-normal text-center mt-2">
-              Your ideas, organized visually.
+            <p className="text-[#eca013]/60 text-xs font-mono leading-normal mt-2 tracking-widest">
+              PLEASE INPUT CREDENTIALS TO PROCEED
             </p>
           </div>
 
           {/* Login Form */}
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400 text-center">{error}</p>
+              <div className="p-3 bg-red-900/10 border border-red-500/50 rounded">
+                <p className="text-xs text-red-500 font-mono text-center tracking-widest uppercase flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-sm">warning</span>
+                    {error}
+                </p>
               </div>
             )}
 
             {/* Username Field */}
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col w-full group">
               <label className="flex flex-col w-full">
-                <p className="text-[#111618] dark:text-gray-200 text-sm font-medium leading-normal pb-2">
-                  Username
+                <p className="text-[#eca013]/80 text-[10px] font-bold tracking-widest uppercase pb-2 pl-1">
+                  User_ID
                 </p>
-                <input
-                  className="flex w-full min-w-0 resize-none overflow-hidden rounded-lg text-[#111618] dark:text-white focus:outline-0 focus:ring-2 focus:ring-[#13a4ec]/20 border border-[#dbe2e6] dark:border-gray-700 bg-white dark:bg-[#101c22] focus:border-[#13a4ec] h-12 placeholder:text-[#617c89] dark:placeholder:text-gray-500 p-4 text-base font-normal leading-normal"
-                  placeholder="Enter your username"
-                  type="text"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div className="flex items-center border-b border-[#eca013]/30 focus-within:border-[#eca013] bg-[#eca013]/5 transition-colors">
+                    <div className="pl-3 text-[#eca013]/50 font-mono">&gt;</div>
+                    <input
+                      className="flex w-full min-w-0 resize-none overflow-hidden bg-transparent border-none text-[#eca013] focus:ring-0 h-10 placeholder:text-[#eca013]/20 p-2 text-sm font-mono tracking-wider"
+                      placeholder="ENTER_ID"
+                      type="text"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
               </label>
             </div>
 
             {/* Password Field */}
-            <div className="flex flex-col w-full">
-              <div className="flex justify-between items-center pb-2">
-                <p className="text-[#111618] dark:text-gray-200 text-sm font-medium leading-normal">Password</p>
-              </div>
+            <div className="flex flex-col w-full group">
               <label className="flex flex-col w-full">
-                <div className="flex w-full items-stretch rounded-lg">
-                  <input
-                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111618] dark:text-white focus:outline-0 focus:ring-2 focus:ring-[#13a4ec]/20 border border-[#dbe2e6] dark:border-gray-700 bg-white dark:bg-[#101c22] focus:border-[#13a4ec] h-12 placeholder:text-[#617c89] dark:placeholder:text-gray-500 px-4 rounded-r-none border-r-0 text-base font-normal leading-normal"
-                    placeholder="Enter your password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[#617c89] dark:text-gray-500 flex border border-[#dbe2e6] dark:border-gray-700 bg-white dark:bg-[#101c22] items-center justify-center px-3 rounded-r-lg border-l-0 cursor-pointer hover:text-[#13a4ec] transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {showPassword ? "visibility_off" : "visibility"}
-                    </span>
-                  </button>
+                <p className="text-[#eca013]/80 text-[10px] font-bold tracking-widest uppercase pb-2 pl-1">
+                  Access_Key
+                </p>
+                <div className="flex items-center border-b border-[#eca013]/30 focus-within:border-[#eca013] bg-[#eca013]/5 transition-colors">
+                    <div className="pl-3 text-[#eca013]/50 font-mono">*</div>
+                    <input
+                      className="flex w-full min-w-0 resize-none overflow-hidden bg-transparent border-none text-[#eca013] focus:ring-0 h-10 placeholder:text-[#eca013]/20 p-2 text-sm font-mono tracking-wider"
+                      placeholder="ENTER_KEY"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="px-3 text-[#eca013]/50 hover:text-[#eca013] transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">
+                        {showPassword ? "visibility_off" : "visibility"}
+                        </span>
+                    </button>
                 </div>
               </label>
             </div>
 
             {/* Sign In Button */}
             <button
-              className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-[#13a4ec] text-white text-base font-bold leading-normal tracking-[0.015em] mt-2 transition-opacity hover:opacity-90"
+              className="w-full flex cursor-pointer items-center justify-center rounded h-12 bg-[#eca013] text-[#0a0b10] text-sm font-bold tracking-[0.1em] mt-4 hover:opacity-90 tactile-btn transition-all uppercase"
               type="submit"
             >
-              <span className="truncate">Sign In</span>
+              Init_Session
             </button>
           </form>
-        </div>
-
-        {/* Canvas Brand Elements */}
-        <div className="mt-12 flex items-center gap-8 opacity-40 grayscale pointer-events-none">
-          <div className="h-10 w-10 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center">
-            <span className="material-symbols-outlined text-gray-400">add</span>
-          </div>
-          <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-          <div className="h-10 w-10 border-2 border-dashed border-gray-400 rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-gray-400">draw</span>
-          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-8 text-center">
-        <p className="text-xs text-[#617c89] dark:text-gray-500">
-          © 2024 Canvas Notes. Designed for focused creativity.
+      <footer className="py-6 text-center z-10">
+        <p className="text-[10px] text-[#eca013]/30 font-mono tracking-widest uppercase">
+          Sys_Admin: marmalade1124 // Term_v1.0.4
         </p>
       </footer>
     </div>
