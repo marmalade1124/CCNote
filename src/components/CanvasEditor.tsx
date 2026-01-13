@@ -106,12 +106,12 @@ export function CanvasEditor() {
     return localContent[element.id] ?? element.content;
   };
 
-  const reorganizeFolder = async (folderId: string, currentChildren: CanvasElement[]) => {
-      const folder = activeCanvas?.elements.find(e => e.id === folderId);
+  const reorganizeLayout = async (folder: CanvasElement, currentChildren: CanvasElement[], collapsedOverride?: boolean) => {
       if (!folder) return;
 
-      const contentStr = localContent[folderId] ?? folder.content;
-      const { collapsed } = parseFolderContent(contentStr);
+      const contentStr = localContent[folder.id] ?? folder.content;
+      const parsed = parseFolderContent(contentStr);
+      const collapsed = collapsedOverride !== undefined ? collapsedOverride : parsed.collapsed;
 
       const PADDING = 24;
       const HEADER = 40;
@@ -123,16 +123,17 @@ export function CanvasEditor() {
       const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
       
       if (collapsed) {
-          // Stack visually at folder location but keep logical containment
+          // Collapsed: Stack invisible children at folder location
           for (const child of sorted) {
               if (child.x !== folder.x || child.y !== folder.y) {
                     batchUpdates.push({ id: child.id, changes: { x: folder.x, y: folder.y } });
               }
           }
            if (folder.width !== 220 || folder.height !== 50) {
-               batchUpdates.push({ id: folderId, changes: { width: 220, height: 50 } });
+               batchUpdates.push({ id: folder.id, changes: { width: 220, height: 50 } });
           }
       } else {
+          // Expanded: Grid Layout relative to Folder
           for (let i = 0; i < sorted.length; i++) {
               const child = sorted[i];
               const col = i % 2;
@@ -153,7 +154,7 @@ export function CanvasEditor() {
           const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
           
           if (folder.width !== newWidth || folder.height !== newHeight) {
-               batchUpdates.push({ id: folderId, changes: { width: newWidth, height: newHeight } });
+               batchUpdates.push({ id: folder.id, changes: { width: newWidth, height: newHeight } });
           }
       }
       
@@ -171,20 +172,19 @@ export function CanvasEditor() {
       
       handleContentChange(element.id, newContent); 
       
+      const updatedFolder = { ...element, content: newContent };
+      
       if (newCollapsed) {
           // Collapse
           await updateElement(element.id, { height: 50, width: 220, content: newContent });
-          // Children hidden by render logic, but let's ensure they update pos if needed?
-          // No, re-render will hide them. reorganizeFolder will be skipped or called?
-          // Better call reorganize to "Pack" them
+          // Force layout with new collapsed state
           const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
-          // We need to pass updated collapsed state? No reorganize checks localContent
-          await reorganizeFolder(element.id, children);
+          await reorganizeLayout(updatedFolder, children, true);
       } else {
            // Expand
-           await updateElement(element.id, { content: newContent });
+           await updateElement(element.id, { content: newContent }); 
            const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
-           await reorganizeFolder(element.id, children);
+           await reorganizeLayout(updatedFolder, children, false);
       }
   };
 
@@ -294,15 +294,13 @@ export function CanvasEditor() {
 
         if (target) {
             if (target.type === 'folder') {
-                const targetContent = localContent[target.id] ?? target.content;
-                const { collapsed } = parseFolderContent(targetContent);
-
                 await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: target.id });
                 
-                // If target collapsed, we don't need to layout visible children? 
-                // But we should trigger layout to stack this new child hiddenly.
-                const children = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
-                await reorganizeFolder(target.id, [...children, { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id }]);
+                // Use FRESH children list
+                const otherChildren = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
+                const updatedDragged = { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id };
+                
+                await reorganizeLayout(target, [...otherChildren, updatedDragged]);
 
                 setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                 setIsDragging(false); 
@@ -331,7 +329,7 @@ export function CanvasEditor() {
                         { id: target.id, changes: { parentId: folder.id } }
                     ]);
                     
-                    await reorganizeFolder(folder.id, [
+                    await reorganizeLayout(folder, [
                         { ...draggedElement, parentId: folder.id },
                         { ...target, parentId: folder.id }
                     ]);
@@ -357,11 +355,9 @@ export function CanvasEditor() {
                     const remaining = activeCanvas.elements.filter(el => el.parentId === parent.id && el.id !== draggedId);
                     
                     if (remaining.length <= 1) {
-                         // Must handle Promise carefully
-                         // Use deleteElement
                          await deleteElement(parent.id);
                     } else {
-                        await reorganizeFolder(parent.id, remaining);
+                        await reorganizeLayout(parent, remaining);
                     }
 
                     setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
@@ -388,9 +384,10 @@ export function CanvasEditor() {
 
     } else {
         if (draggedElement.parentId) {
+             const parent = activeCanvas.elements.find(el => el.id === draggedElement.parentId);
              const siblings = activeCanvas.elements.filter(el => el.parentId === draggedElement.parentId);
              const updatedSiblings = siblings.map(s => s.id === draggedId ? { ...s, x: pos.x, y: pos.y } : s);
-             await reorganizeFolder(draggedElement.parentId, updatedSiblings);
+             if (parent) await reorganizeLayout(parent, updatedSiblings);
         } else {
              await updateElement(draggedId, { x: pos.x, y: pos.y });
         }
@@ -431,13 +428,13 @@ export function CanvasEditor() {
       }
   };
 
-  // Determine collapsed folders set
   const collapsedFolders = useMemo(() => {
      const set = new Set<string>();
      if (activeCanvas) {
          activeCanvas.elements.forEach(el => {
              if (el.type === 'folder') {
-                 const data = parseFolderContent(localContent[el.id] ?? el.content);
+                 const content = localContent[el.id] ?? el.content;
+                 const data = parseFolderContent(content);
                  if (data.collapsed) set.add(el.id);
              }
          });
