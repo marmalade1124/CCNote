@@ -131,6 +131,16 @@ export function CanvasEditor() {
   }, [canvasEl]);
 
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
+  
+  // Slash Command State
+  const [commandMenu, setCommandMenu] = useState<{
+      visible: boolean;
+      x: number;
+      y: number;
+      elementId: string;
+      query: string;
+      index: number;
+  } | null>(null);
 
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
@@ -199,6 +209,77 @@ export function CanvasEditor() {
       handleContentChange(elementId, content);
   };
   
+  const handleInputKeyDown = (e: React.KeyboardEvent, elementId: string, currentContent: string, setContent: (s: string) => void) => {
+       // Command Menu Navigation
+       if (commandMenu && commandMenu.visible && commandMenu.elementId === elementId) {
+           if (e.key === 'ArrowDown') {
+               e.preventDefault();
+               setCommandMenu(prev => prev ? { ...prev, index: Math.min(prev.index + 1, 4) } : null); // Max 5 items
+               return;
+           }
+           if (e.key === 'ArrowUp') {
+               e.preventDefault();
+               setCommandMenu(prev => prev ? { ...prev, index: Math.max(prev.index - 1, 0) } : null);
+               return;
+           }
+           if (e.key === 'Enter') {
+               e.preventDefault();
+               executeCommand(commandMenu.index, elementId, currentContent, setContent);
+               return;
+           }
+           if (e.key === 'Escape') {
+               setCommandMenu(null);
+               return;
+           }
+       }
+
+       // Trigger '/'
+       if (e.key === '/') {
+           const target = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
+           // Simple positioning (approximate)
+           const rect = target.getBoundingClientRect();
+           setCommandMenu({
+               visible: true,
+               x: rect.left + 20, // Offset slightly
+               y: rect.bottom - 40, // Above or near cursor? Hard to get cursor pos. Let's put it at bottom-left of input for now or use library. 
+               // Better: Mouse Pos? No, keyboard. 
+               // Just center or bottom-left of element is fine for v1.
+               elementId,
+               query: '',
+               index: 0
+           });
+           // We allow '/' to be typed.
+       }
+  };
+
+  const executeCommand = (index: number, elementId: string, currentContent: string, setContent: (s: string) => void) => {
+      const commands = getFilteredCommands(commandMenu?.query || '');
+      const cmd = commands[index];
+      if (cmd) {
+         // Replace last '/' + query with command text
+         const q = commandMenu?.query || '';
+         const newText = currentContent.slice(0, currentContent.lastIndexOf('/' + q)) + cmd.insert;
+         // Adjust: This logic assumes cursor is at end. 
+         // Real editors are complex. For v1, we append or replace end.
+         // Let's assume user just typed '/'.
+         // Re-read content from state might include the '/'?
+         // Yes so we remove it.
+         setContent(newText);
+         setCommandMenu(null);
+      }
+  };
+
+  const getFilteredCommands = (query: string) => {
+      const all = [
+          { label: 'Checklist', insert: '- [ ] ', desc: 'To-do list' },
+          { label: 'Heading 1', insert: '# ', desc: 'Large Header' },
+          { label: 'Heading 2', insert: '## ', desc: 'Medium Header' },
+          { label: 'Code Block', insert: '```\n\n```', desc: 'Code Snippet' },
+          { label: 'Date', insert: new Date().toLocaleDateString(), desc: 'Today' },
+      ];
+      return all.filter(c => c.label.toLowerCase().includes(query.toLowerCase()));
+  };
+
   // Tag System State
   const [activeTag, setActiveTag] = useState<string | null>(null);
   
@@ -900,6 +981,32 @@ export function CanvasEditor() {
          </div>
       </div>
 
+      {commandMenu && commandMenu.visible && (
+          <div className="fixed z-[9999] bg-[#0a0b10] border border-[#eca013] shadow-[0_0_20px_rgba(236,160,19,0.3)] rounded-lg p-2 flex flex-col gap-1 w-64 animate-in fade-in zoom-in-95 duration-100"
+               style={{ left: commandMenu.x, top: commandMenu.y }}>
+               <div className="text-[10px] uppercase text-[#eca013]/50 font-bold px-2 pb-1 border-b border-[#eca013]/20 mb-1">
+                   Hashtag Commands
+               </div>
+               {getFilteredCommands(commandMenu.query).map((cmd, i) => (
+                   <button 
+                       key={cmd.label}
+                       className={`flex items-center gap-3 px-2 py-1.5 rounded text-left transition-colors
+                           ${i === commandMenu.index ? 'bg-[#eca013] text-[#0a0b10]' : 'text-[#eca013] hover:bg-[#eca013]/10'}
+                       `}
+                       onClick={() => { /* Click handling todo */ }}
+                   >
+                       <div className={`w-4 h-4 flex items-center justify-center rounded border ${i === commandMenu.index ? 'border-[#0a0b10]' : 'border-[#eca013]/50'}`}>
+                           <span className="text-[10px] font-mono">{cmd.label[0]}</span>
+                       </div>
+                       <div className="flex flex-col">
+                           <span className="text-xs font-bold">{cmd.label}</span>
+                           <span className={`text-[10px] ${i === commandMenu.index ? 'text-[#0a0b10]/70' : 'text-[#eca013]/50'}`}>{cmd.desc}</span>
+                       </div>
+                   </button>
+               ))}
+          </div>
+      )}
+
        {/* Canvas Viewport */}
       <div ref={setCanvasEl} className="flex-1 relative overflow-hidden w-full h-full" 
            onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { handleMouseUp(); setDragTargetId(null); setIsDragging(false); }}
@@ -1064,6 +1171,7 @@ export function CanvasEditor() {
                                                 onClick={(e) => e.stopPropagation()}
                                                 onMouseDown={(e) => e.stopPropagation()}
                                                 onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
+                                                onKeyDown={(e) => handleInputKeyDown(e, element.id, cardData.description, (s) => handleContentChange(element.id, serializeCardContent(cardData.title, s)))}
                                                 placeholder="Input data stream..."
                                             />
                                         ) : (
@@ -1088,6 +1196,7 @@ export function CanvasEditor() {
                                             onClick={(e) => e.stopPropagation()}
                                             onMouseDown={(e) => e.stopPropagation()}
                                             onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
+                                            onKeyDown={(e) => handleInputKeyDown(e, element.id, getElementContent(element), (s) => handleContentChange(element.id, s))}
                                         />
                                     ) : (
                                         <div className="w-full h-full text-sm font-medium text-[#eca013] font-mono overflow-hidden markdown-preview">
@@ -1109,6 +1218,7 @@ export function CanvasEditor() {
                                             onClick={(e) => e.stopPropagation()}
                                             onMouseDown={(e) => e.stopPropagation()}
                                             onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
+                                            onKeyDown={(e) => handleInputKeyDown(e, element.id, getElementContent(element), (s) => handleContentChange(element.id, s))}
                                         />
                                     ) : (
                                         <div className="w-full h-full text-base text-[#eca013] font-mono phosphor-glow overflow-hidden markdown-preview">
