@@ -217,46 +217,31 @@ export function CanvasEditor() {
     setLocalPositions({});
   }, [activeCanvas?.id]);
 
+  /* Removed problematic useEffect that caused race conditions */
+
   const handleContentChange = (elementId: string, content: string) => {
     setLocalContent((prev) => ({ ...prev, [elementId]: content }));
+    
+    // Slash Command Logic: Update Query or Close
+    if (commandMenu && commandMenu.visible && commandMenu.elementId === elementId) {
+           let currentText = "";
+           // Parse content to get relevant text field
+           if (commandMenu.fieldType === 'plain') currentText = content;
+           else if (commandMenu.fieldType === 'card_desc') currentText = parseCardContent(content).description;
+           else if (commandMenu.fieldType === 'image_caption') currentText = parseImageContent(content).description;
+           else if (commandMenu.fieldType === 'image_title') currentText = parseImageContent(content).title;
+           else if (commandMenu.fieldType === 'card_title') currentText = parseCardContent(content).title;
+
+           const lastSlashIndex = currentText.lastIndexOf('/');
+           if (lastSlashIndex === -1) {
+               setCommandMenu(null); // Close if slash gone
+           } else {
+               setCommandMenu(prev => prev ? { ...prev, query: currentText.slice(lastSlashIndex + 1) } : null);
+           }
+    }
+
     debouncedUpdateContent(elementId, content);
   };
-
-  const handleFolderContentChange = (elementId: string, newTitle: string, currentCollapsed: boolean) => {
-      const content = serializeFolderContent(newTitle, currentCollapsed);
-      handleContentChange(elementId, content);
-  };
-  
-   // Watch for content changes to update command menu query or close it
-   useEffect(() => {
-       if (commandMenu && commandMenu.visible) {
-           const el = activeCanvas?.elements.find(e => e.id === commandMenu.elementId);
-           if (!el) { setCommandMenu(null); return; }
-
-           const rawContent = localContent[el.id] ?? el.content;
-           let currentText = "";
-           
-           if (commandMenu.fieldType === 'plain') currentText = rawContent;
-           else if (commandMenu.fieldType === 'card_desc') currentText = parseCardContent(rawContent).description;
-           else if (commandMenu.fieldType === 'image_caption') currentText = parseImageContent(rawContent).description;
-           else if (commandMenu.fieldType === 'image_title') currentText = parseImageContent(rawContent).title;
-           else if (commandMenu.fieldType === 'card_title') currentText = parseCardContent(rawContent).title;
-
-           // Find the last '/'
-           const lastSlashIndex = currentText.lastIndexOf('/');
-           
-           if (lastSlashIndex === -1) {
-               // Slash deleted
-               setCommandMenu(null);
-           } else {
-               // Update query
-               const query = currentText.slice(lastSlashIndex + 1);
-               // Optional: Check if query contains spaces, might want to close?
-               // For now, just update query
-               setCommandMenu(prev => prev ? { ...prev, query } : null);
-           }
-       }
-   }, [localContent, activeCanvas?.elements, commandMenu?.visible, commandMenu?.elementId, commandMenu?.fieldType]); // Dependencies trigger on content update
 
   const handleInputKeyDown = (
       e: React.KeyboardEvent, 
