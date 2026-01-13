@@ -172,6 +172,48 @@ export function CanvasEditor() {
     }));
   }, [isDragging, dragOffset, activeTool, activeCanvas, localPositions]);
 
+  // Auto-layout helper
+  const reorganizeFolder = async (folderId: string, currentChildren: CanvasElement[]) => {
+      const folder = activeCanvas?.elements.find(e => e.id === folderId);
+      if (!folder) return;
+
+      const PADDING = 24;
+      const HEADER = 40;
+      const COL_WIDTH = 320; // Approx max width of card + gap
+      const ROW_HEIGHT = 220; // Approx max height + gap
+
+      // Sort by index/creation (for now just stable sort by id or y)
+      const sorted = [...currentChildren].sort((a,b) => (a.y - b.y) || (a.x - b.x));
+      
+      const updates: Promise<void | CanvasElement | null>[] = [];
+      
+      for (let i = 0; i < sorted.length; i++) {
+          const child = sorted[i];
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          
+          const newX = folder.x + PADDING + (col * COL_WIDTH);
+          const newY = folder.y + HEADER + PADDING + (row * ROW_HEIGHT);
+          
+          if (child.x !== newX || child.y !== newY) {
+              updates.push(updateElement(child.id, { x: newX, y: newY }));
+          }
+      }
+
+      // Resize Folder
+      const cols = Math.min(sorted.length, 2);
+      const rows = Math.ceil(sorted.length / 2);
+      
+      const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); // -20 to tighten last gap
+      const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
+      
+      if (folder.width !== newWidth || folder.height !== newHeight) {
+           updates.push(updateElement(folderId, { width: newWidth, height: newHeight }));
+      }
+      
+      await Promise.all(updates);
+  };
+
   const handleMouseUp = useCallback(async () => {
     if (!isDragging || !dragElementRef.current || !activeCanvas) {
         setIsDragging(false);
@@ -192,7 +234,6 @@ export function CanvasEditor() {
 
     // Check collision for Grouping (only if dragging a non-folder node)
     if (draggedElement.type !== 'folder') {
-        // Find if we dropped onto another node
         const target = activeCanvas.elements.find(el => 
             el.id !== draggedId && 
             isOverlapping(
@@ -205,29 +246,39 @@ export function CanvasEditor() {
             if (target.type === 'folder') {
                 // Dragged INTO folder
                 await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: target.id });
-                setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; }); // Clear local to prevent glitch
+                
+                // Trigger Layout
+                const children = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
+                await reorganizeFolder(target.id, [...children, { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id }]);
+
+                setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                 setIsDragging(false); 
                 dragElementRef.current = null;
                 return;
             } else if (!target.parentId && !draggedElement.parentId) {
-                // Dragged onto other independent node -> Create Group
-                // Calculate Union Box
-                const unionBox = getBoundingBox([{...draggedElement, x: pos.x, y: pos.y}, target]);
-                const padding = 60;
+                // Dragged onto other node -> Create Group
+                const PADDING = 24;
+                const HEADER = 40;
                 
-                // Create Folder
+                // Create Folder (size will be fixed by layout immediately)
                 const folder = await addElement({
                     type: 'folder',
-                    x: unionBox.x - padding,
-                    y: unionBox.y - padding,
-                    width: unionBox.width + (padding * 2),
-                    height: unionBox.height + (padding * 2),
+                    x: pos.x - PADDING,
+                    y: pos.y - HEADER - PADDING,
+                    width: 100, // placeholder
+                    height: 100, // placeholder
                     content: "NEW_GROUP",
                 });
                 
                 if (folder) {
-                    await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: folder.id });
+                    await updateElement(draggedId, { parentId: folder.id });
                     await updateElement(target.id, { parentId: folder.id });
+                    
+                    // Layout
+                    await reorganizeFolder(folder.id, [
+                        { ...draggedElement, parentId: folder.id },
+                        { ...target, parentId: folder.id }
+                    ]);
                 }
                 
                 setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
@@ -248,7 +299,12 @@ export function CanvasEditor() {
                 if (!isStillInside) {
                     // Dragged OUT
                     await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: null });
-                     setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
+                    
+                    // Re-layout old parent
+                    const remaining = activeCanvas.elements.filter(el => el.parentId === parent.id && el.id !== draggedId);
+                    await reorganizeFolder(parent.id, remaining);
+
+                    setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                     setIsDragging(false);
                     dragElementRef.current = null;
                     return;
@@ -258,25 +314,35 @@ export function CanvasEditor() {
     }
 
     // Normal Move update
-    // If it's a folder, we need to move children too (delta)
     if (draggedElement.type === 'folder' && dragStartPosRef.current) {
         const deltaX = pos.x - dragStartPosRef.current.x;
         const deltaY = pos.y - dragStartPosRef.current.y;
         
         const children = activeCanvas.elements.filter(el => el.parentId === draggedId);
         
-        // Update parent
         await updateElement(draggedId, { x: pos.x, y: pos.y });
 
-        // Update children
         for (const child of children) {
             await updateElement(child.id, { x: child.x + deltaX, y: child.y + deltaY });
         }
     } else {
-        await updateElement(draggedId, { x: pos.x, y: pos.y });
+        // If child of folder moved WITHIN folder?
+        // We might want to re-layout if dropped inside to snap to grid?
+        // "If I drag a node into a node ... placement ... will be side by side"
+        // Implicitly, moving items INSIDE the folder might also expect snap?
+        // Let's force layout on ANY move of a child inside folder to keep it tidy.
+        if (draggedElement.parentId) {
+             await updateElement(draggedId, { x: pos.x, y: pos.y });
+             const siblings = activeCanvas.elements.filter(el => el.parentId === draggedElement.parentId);
+             // Note: siblings includes the dragged element (updated pos). 
+             // We need to pass the updated version of draggedElement.
+             const updatedSiblings = siblings.map(s => s.id === draggedId ? { ...s, x: pos.x, y: pos.y } : s);
+             await reorganizeFolder(draggedElement.parentId, updatedSiblings);
+        } else {
+             await updateElement(draggedId, { x: pos.x, y: pos.y });
+        }
     }
     
-    // Clear drag state
     setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
     setIsDragging(false);
     dragElementRef.current = null;
