@@ -275,5 +275,37 @@ export const useSfx = () => {
         noise.start();
     }, [initAudio]);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playTrash };
+    const playUngroup = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+
+        // "Separate" Sound - Diverging sine waves (Reverse Merge)
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(440, now);
+        osc1.frequency.linearRampToValueAtTime(200, now + 0.3);
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(440, now);
+        osc2.frequency.linearRampToValueAtTime(600, now + 0.3);
+
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(now + 0.4);
+        osc2.stop(now + 0.4);
+    }, [initAudio]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playUngroup, playTrash };
 };

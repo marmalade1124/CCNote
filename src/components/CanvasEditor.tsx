@@ -88,7 +88,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 
 export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
-  const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak, playMerge, playTrash } = useSfx();
+  const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak, playMerge, playUngroup, playTrash } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -227,6 +227,37 @@ export function CanvasEditor() {
       handleContentChange(elementId, content);
   };
   
+   // Watch for content changes to update command menu query or close it
+   useEffect(() => {
+       if (commandMenu && commandMenu.visible) {
+           const el = activeCanvas?.elements.find(e => e.id === commandMenu.elementId);
+           if (!el) { setCommandMenu(null); return; }
+
+           const rawContent = localContent[el.id] ?? el.content;
+           let currentText = "";
+           
+           if (commandMenu.fieldType === 'plain') currentText = rawContent;
+           else if (commandMenu.fieldType === 'card_desc') currentText = parseCardContent(rawContent).description;
+           else if (commandMenu.fieldType === 'image_caption') currentText = parseImageContent(rawContent).description;
+           else if (commandMenu.fieldType === 'image_title') currentText = parseImageContent(rawContent).title;
+           else if (commandMenu.fieldType === 'card_title') currentText = parseCardContent(rawContent).title;
+
+           // Find the last '/'
+           const lastSlashIndex = currentText.lastIndexOf('/');
+           
+           if (lastSlashIndex === -1) {
+               // Slash deleted
+               setCommandMenu(null);
+           } else {
+               // Update query
+               const query = currentText.slice(lastSlashIndex + 1);
+               // Optional: Check if query contains spaces, might want to close?
+               // For now, just update query
+               setCommandMenu(prev => prev ? { ...prev, query } : null);
+           }
+       }
+   }, [localContent, activeCanvas?.elements, commandMenu?.visible, commandMenu?.elementId, commandMenu?.fieldType]); // Dependencies trigger on content update
+
   const handleInputKeyDown = (
       e: React.KeyboardEvent, 
       elementId: string, 
@@ -848,6 +879,7 @@ export function CanvasEditor() {
                 );
                 
                 if (!isStillInside) {
+                    playUngroup(); // SFX for Ungroup
                     await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: null });
                     const remaining = activeCanvas.elements.filter(el => el.parentId === parent.id && el.id !== draggedId);
                     
