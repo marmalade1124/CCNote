@@ -26,7 +26,7 @@ function serializeCardContent(title: string, description: string): string {
 }
 
 export function CanvasEditor() {
-  const { activeCanvas, addElement, updateElement, deleteElement } = useCanvas();
+  const { activeCanvas, addElement, updateElement, deleteElement, addConnection, deleteConnection } = useCanvas();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -34,10 +34,16 @@ export function CanvasEditor() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragElementRef = useRef<string | null>(null);
 
-  const [activeTool, setActiveTool] = useState<"select" | "card" | "sticky" | "text">("select");
+  const [activeTool, setActiveTool] = useState<"select" | "card" | "sticky" | "text" | "connect">("select");
+  const [connectionStart, setConnectionStart] = useState<string | null>(null);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target !== canvasRef.current) return;
+
+    if (activeTool === "connect") {
+      setConnectionStart(null);
+      return;
+    }
 
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -84,6 +90,18 @@ export function CanvasEditor() {
 
   const handleElementMouseDown = (e: React.MouseEvent, element: CanvasElement) => {
     e.stopPropagation();
+
+    if (activeTool === "connect") {
+      if (connectionStart === null) {
+        setConnectionStart(element.id);
+      } else if (connectionStart !== element.id) {
+        addConnection(connectionStart, element.id);
+        setConnectionStart(null);
+        // Optional: keep tool active for chaining? Or reset? Let's keep active for now.
+      }
+      return;
+    }
+
     setSelectedElement(element.id);
     setIsDragging(true);
     dragElementRef.current = element.id;
@@ -99,6 +117,8 @@ export function CanvasEditor() {
 
   // Optimistic local updates during drag (no DB calls)
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (activeTool === "connect") return; // No dragging in connect mode
+
     if (!isDragging || !dragElementRef.current) return;
 
     const newX = e.clientX - dragOffset.x;
@@ -108,7 +128,7 @@ export function CanvasEditor() {
       ...prev,
       [dragElementRef.current!]: { x: newX, y: newY },
     }));
-  }, [isDragging, dragOffset]);
+  }, [isDragging, dragOffset, activeTool]);
 
   // Save to DB only on mouse up
   const handleMouseUp = useCallback(() => {
@@ -146,7 +166,12 @@ export function CanvasEditor() {
       setSelectedElement(null);
     }
     if (e.key === "Escape") {
-      setSelectedElement(null);
+      if (activeTool === "connect") {
+        setConnectionStart(null);
+        setActiveTool("select");
+      } else {
+        setSelectedElement(null);
+      }
     }
   };
 
@@ -157,6 +182,14 @@ export function CanvasEditor() {
       return local;
     }
     return { x: element.x, y: element.y };
+  };
+
+  const getElementCenter = (element: CanvasElement) => {
+    const pos = getElementPosition(element);
+    return {
+      x: pos.x + element.width / 2,
+      y: pos.y + (element.type === "text" ? 20 : element.height / 2), // Approx for text
+    };
   };
 
   if (!activeCanvas) {
@@ -191,6 +224,15 @@ export function CanvasEditor() {
           title="Select"
         >
           <span className="material-symbols-outlined">near_me</span>
+        </button>
+        <button
+          className={`p-2 rounded-lg transition-colors ${
+            activeTool === "connect" ? "bg-[#13a4ec]/10 text-[#13a4ec]" : "hover:bg-[#f6f7f8] dark:hover:bg-[#101c22]"
+          }`}
+          onClick={() => setActiveTool("connect")}
+          title="Connect"
+        >
+          <span className="material-symbols-outlined">timeline</span>
         </button>
         <div className="w-px h-6 bg-[#f0f3f4] dark:bg-[#2d3748] mx-1"></div>
         <button
@@ -243,14 +285,53 @@ export function CanvasEditor() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        style={{ cursor: activeTool === "connect" ? "crosshair" : "default" }}
       >
+        {/* Connections SVG Layer */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af" />
+            </marker>
+          </defs>
+          {activeCanvas.connections?.map((conn) => {
+            const fromEl = activeCanvas.elements.find(el => el.id === conn.from);
+            const toEl = activeCanvas.elements.find(el => el.id === conn.to);
+            if (!fromEl || !toEl) return null;
+
+            const start = getElementCenter(fromEl);
+            const end = getElementCenter(toEl);
+
+            return (
+              <g key={conn.id}>
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="#9ca3af"
+                  strokeWidth="2"
+                  markerEnd="url(#arrowhead)"
+                  opacity="0.6"
+                />
+                {/* Invisible wider line for easier clicking/deleting? Could add later */}
+              </g>
+            );
+          })}
+        </svg>
+
         {activeCanvas.elements.map((element) => {
           const pos = getElementPosition(element);
+          const isConnectingStart = connectionStart === element.id;
+
           return (
             <div
               key={element.id}
-              className={`absolute p-4 rounded-xl shadow-lg border cursor-move select-none ${
-                selectedElement === element.id
+              className={`absolute p-4 rounded-xl shadow-lg border transition-all ${
+                // Different cursor if using connect tool
+                activeTool === "connect" ? "cursor-pointer hover:ring-2 hover:ring-[#13a4ec]" : "cursor-move"
+              } select-none ${
+                selectedElement === element.id || isConnectingStart
                   ? "ring-2 ring-[#13a4ec] shadow-xl"
                   : "border-[#f0f3f4] dark:border-[#2d3748] hover:shadow-xl"
               } ${element.type === "card" ? "bg-white dark:bg-[#1c2a32]" : ""} ${element.type === "text" ? "bg-transparent" : ""}`}
@@ -261,6 +342,7 @@ export function CanvasEditor() {
                 minHeight: element.type === "text" ? "auto" : element.height,
                 transform: `rotate(${element.rotation || 0}deg)`,
                 backgroundColor: element.type === "sticky" ? element.color : undefined,
+                zIndex: isConnectingStart ? 20 : 10,
               }}
               onMouseDown={(e) => handleElementMouseDown(e, element)}
             >
@@ -275,6 +357,7 @@ export function CanvasEditor() {
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       placeholder="Card Title"
+                      disabled={activeTool === "connect"}
                     />
                     <textarea
                       className="w-full flex-1 bg-transparent text-sm resize-none outline-none text-[#617c89] dark:text-[#a0aec0]"
@@ -283,6 +366,7 @@ export function CanvasEditor() {
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       placeholder="Add description..."
+                      disabled={activeTool === "connect"}
                     />
                   </div>
                 );
@@ -294,6 +378,7 @@ export function CanvasEditor() {
                   onChange={(e) => handleContentChange(element.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
+                  disabled={activeTool === "connect"}
                 />
               )}
               {element.type === "text" && (
@@ -304,10 +389,11 @@ export function CanvasEditor() {
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   rows={1}
+                  disabled={activeTool === "connect"}
                 />
               )}
 
-              {selectedElement === element.id && (
+              {selectedElement === element.id && activeTool !== "connect" && (
                 <button
                   className="absolute -top-3 -right-3 size-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-lg"
                   onClick={(e) => {
@@ -336,6 +422,7 @@ export function CanvasEditor() {
 
       <div className="absolute bottom-6 left-6 text-xs text-[#617c89] bg-white/80 dark:bg-[#1c2a32]/80 px-3 py-2 rounded-lg">
         <span className="font-semibold">Tips:</span> Click to add • Drag to move • Delete key to remove
+        {activeTool === "connect" && <span className="text-[#13a4ec] font-bold ml-2"> • Click two elements to connect!</span>}
       </div>
     </div>
   );

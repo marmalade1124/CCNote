@@ -21,6 +21,14 @@ export interface DbElement {
   created_at: string;
 }
 
+export interface DbConnection {
+  id: string;
+  canvas_id: string;
+  from_element_id: string;
+  to_element_id: string;
+  created_at: string;
+}
+
 // Application types (same as before but for reference)
 export interface CanvasElement {
   id: string;
@@ -34,10 +42,17 @@ export interface CanvasElement {
   rotation?: number;
 }
 
+export interface Connection {
+  id: string;
+  from: string;
+  to: string;
+}
+
 export interface Canvas {
   id: string;
   name: string;
   elements: CanvasElement[];
+  connections: Connection[];
   createdAt: number;
   updatedAt: number;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useCallback, useEffect, useState } from "react";
-import { Canvas, CanvasElement, DbCanvas, DbElement } from "@/types/canvas";
+import { Canvas, CanvasElement, Connection, DbCanvas, DbElement, DbConnection } from "@/types/canvas";
 import { supabase } from "@/lib/supabase";
 
 interface CanvasContextType {
@@ -18,12 +18,14 @@ interface CanvasContextType {
   updateElement: (elementId: string, updates: Partial<CanvasElement>) => Promise<void>;
   deleteElement: (elementId: string) => Promise<void>;
   refreshCanvases: () => Promise<void>;
+  addConnection: (fromId: string, toId: string) => Promise<void>;
+  deleteConnection: (connectionId: string) => Promise<void>;
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
 
-// Transform database canvas + elements to app format
-function dbToCanvas(dbCanvas: DbCanvas, elements: DbElement[]): Canvas {
+// Transform database canvas + elements + connections to app format
+function dbToCanvas(dbCanvas: DbCanvas, elements: DbElement[], connections: DbConnection[]): Canvas {
   return {
     id: dbCanvas.id,
     name: dbCanvas.name,
@@ -37,6 +39,11 @@ function dbToCanvas(dbCanvas: DbCanvas, elements: DbElement[]): Canvas {
       content: el.content,
       color: el.color || undefined,
       rotation: el.rotation,
+    })),
+    connections: connections.map((conn) => ({
+      id: conn.id,
+      from: conn.from_element_id,
+      to: conn.to_element_id,
     })),
     createdAt: new Date(dbCanvas.created_at).getTime(),
     updatedAt: new Date(dbCanvas.updated_at).getTime(),
@@ -60,6 +67,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(true);
     try {
+      // Fetch Canvases
       const { data: dbCanvases, error: canvasError } = await supabase
         .from("canvases")
         .select("*")
@@ -67,12 +75,21 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
 
       if (canvasError) throw canvasError;
 
+      // Fetch Elements
       const { data: dbElements, error: elementsError } = await supabase
         .from("elements")
         .select("*");
 
       if (elementsError) throw elementsError;
 
+      // Fetch Connections
+      const { data: dbConnections, error: connectionsError } = await supabase
+        .from("connections")
+        .select("*");
+
+      if (connectionsError) throw connectionsError;
+
+      // Group Elements by Canvas
       const elementsByCanvas: Record<string, DbElement[]> = {};
       (dbElements || []).forEach((el: DbElement) => {
         if (!elementsByCanvas[el.canvas_id]) {
@@ -81,8 +98,18 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         elementsByCanvas[el.canvas_id].push(el);
       });
 
+      // Group Connections by Canvas
+      const connectionsByCanvas: Record<string, DbConnection[]> = {};
+      (dbConnections || []).forEach((conn: DbConnection) => {
+        if (!connectionsByCanvas[conn.canvas_id]) {
+          connectionsByCanvas[conn.canvas_id] = [];
+        }
+        connectionsByCanvas[conn.canvas_id].push(conn);
+      });
+
+      // Assemble Canvases
       const appCanvases = (dbCanvases || []).map((c: DbCanvas) =>
-        dbToCanvas(c, elementsByCanvas[c.id] || [])
+        dbToCanvas(c, elementsByCanvas[c.id] || [], connectionsByCanvas[c.id] || [])
       );
 
       setCanvases(appCanvases);
@@ -110,7 +137,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
 
         if (error) throw error;
 
-        const newCanvas = dbToCanvas(data, []);
+        const newCanvas = dbToCanvas(data, [], []);
         setCanvases((prev) => [newCanvas, ...prev]);
         setActiveCanvasId(newCanvas.id);
         return newCanvas;
@@ -269,6 +296,9 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.from("elements").delete().eq("id", elementId);
         if (error) throw error;
 
+        // Also delete any connections involving this element
+        // (Handled by ON DELETE CASCADE in DB, but need to update local state)
+
         await supabase
           .from("canvases")
           .update({ updated_at: new Date().toISOString() })
@@ -280,6 +310,10 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
               ? {
                   ...c,
                   elements: c.elements.filter((el) => el.id !== elementId),
+                  // Filter out connections associated with this element
+                  connections: c.connections.filter(
+                    (conn) => conn.from !== elementId && conn.to !== elementId
+                  ),
                   updatedAt: Date.now(),
                 }
               : c
@@ -287,6 +321,84 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         );
       } catch (error) {
         console.error("Error deleting element:", error);
+      }
+    },
+    [activeCanvasId]
+  );
+
+  // New: Add Connection
+  const addConnection = useCallback(
+    async (fromId: string, toId: string) => {
+      if (!supabase || !activeCanvasId) return;
+
+      // Check for duplicates
+      if (activeCanvas?.connections.some(c => (c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId))) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("connections")
+          .insert({
+            canvas_id: activeCanvasId,
+            from_element_id: fromId,
+            to_element_id: toId,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newConnection: Connection = {
+          id: data.id,
+          from: data.from_element_id,
+          to: data.to_element_id,
+        };
+
+        setCanvases((prev) =>
+          prev.map((c) =>
+            c.id === activeCanvasId
+              ? {
+                  ...c,
+                  connections: [...c.connections, newConnection],
+                  updatedAt: Date.now(),
+                }
+              : c
+          )
+        );
+      } catch (error) {
+        console.error("Error adding connection:", error);
+      }
+    },
+    [activeCanvasId, activeCanvas]
+  );
+
+  // New: Delete Connection
+  const deleteConnection = useCallback(
+    async (connectionId: string) => {
+      if (!supabase || !activeCanvasId) return;
+
+      try {
+        const { error } = await supabase
+          .from("connections")
+          .delete()
+          .eq("id", connectionId);
+
+        if (error) throw error;
+
+        setCanvases((prev) =>
+          prev.map((c) =>
+            c.id === activeCanvasId
+              ? {
+                  ...c,
+                  connections: c.connections.filter((conn) => conn.id !== connectionId),
+                  updatedAt: Date.now(),
+                }
+              : c
+          )
+        );
+      } catch (error) {
+        console.error("Error deleting connection:", error);
       }
     },
     [activeCanvasId]
@@ -308,6 +420,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         updateElement,
         deleteElement,
         refreshCanvases,
+        addConnection,
+        deleteConnection, // Exported
       }}
     >
       {children}
