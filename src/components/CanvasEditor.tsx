@@ -497,26 +497,47 @@ export function CanvasEditor() {
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-      // Zoom on Ctrl+Wheel OR simply Wheel (since no vertical scroll)
-      const zoomSensitivity = -0.001;
-      const delta = e.deltaY * zoomSensitivity;
-      
-      const rect = canvasRef.current!.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      // Zoom on Ctrl+Wheel, Pan on Wheel
+      if (e.ctrlKey || e.metaKey) {
+          // ZOOM Logic
+          const zoomSensitivity = -0.001; // Negative because wheel down (positive delta) usually means zoom out in key-modifiers
+          // Actually standard: Ctrl+WheelDown = Zoom OUT. Ctrl+WheelUp = Zoom IN.
+          // deltaY > 0 (down). delta * sens < 0. zoom decreases. Correct.
+          
+          const delta = e.deltaY * zoomSensitivity;
+          
+          const rect = canvasRef.current!.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
 
-      const worldX = (mouseX - viewOffset.x) / zoom;
-      const worldY = (mouseY - viewOffset.y) / zoom;
-      
-      const newZoom = Math.min(Math.max(zoom + delta, 0.1), 5); // 0.1x to 5x
-      
-      const newOffset = {
-          x: mouseX - (worldX * newZoom),
-          y: mouseY - (worldY * newZoom)
-      };
-      
-      setZoom(newZoom);
-      setViewOffset(newOffset);
+          const worldX = (mouseX - viewOffset.x) / zoom;
+          const worldY = (mouseY - viewOffset.y) / zoom;
+          
+          const newZoom = Math.min(Math.max(zoom + delta, 0.1), 5); 
+          
+          const newOffset = {
+              x: mouseX - (worldX * newZoom),
+              y: mouseY - (worldY * newZoom)
+          };
+          
+          setZoom(newZoom);
+          setViewOffset(newOffset);
+      } else {
+          // PAN Logic
+          // Wheel Down = Move View UP (content moves up). Offset Y decreases.
+          // Standard browser scroll: Wheel Down -> Scroll Down (View Window moves Down).
+          // Pan: If I push wheel down, I want to see content below. So View moves Down (Offset moves Up relative to World? No).
+          // If ViewOffset decreases (more negative), we move Right/Down in world?
+          // left: element.x + offset.x.
+          // If offset decreases (becomes -100), element is drawn at x-100. (Moved Left).
+          // So decrease offset = Move View Right? No, move view "window" right.
+          // Actually, "Push Content Up" = Scroll Down = Offset Y decreases.
+          
+          setViewOffset(prev => ({
+              x: prev.x - e.deltaX,
+              y: prev.y - e.deltaY
+          }));
+      }
   };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -995,6 +1016,7 @@ export function CanvasEditor() {
                                         onChange={(e) => handleContentChange(element.id, serializeCardContent(e.target.value, cardData.description))}
                                         onClick={(e) => e.stopPropagation()}
                                         onMouseDown={(e) => e.stopPropagation()}
+                                        onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
                                         placeholder="HEADER_TEXT"
                                         />
                                         {isSelected ? (
@@ -1004,6 +1026,7 @@ export function CanvasEditor() {
                                                 onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
                                                 onClick={(e) => e.stopPropagation()}
                                                 onMouseDown={(e) => e.stopPropagation()}
+                                                onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
                                                 placeholder="Input data stream..."
                                             />
                                         ) : (
@@ -1027,6 +1050,7 @@ export function CanvasEditor() {
                                             onChange={(e) => handleContentChange(element.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
                                             onMouseDown={(e) => e.stopPropagation()}
+                                            onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
                                         />
                                     ) : (
                                         <div className="w-full h-full text-sm font-medium text-[#eca013] font-mono overflow-hidden markdown-preview">
@@ -1047,6 +1071,7 @@ export function CanvasEditor() {
                                             onChange={(e) => handleContentChange(element.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
                                             onMouseDown={(e) => e.stopPropagation()}
+                                            onWheel={(e) => { if (!e.ctrlKey) e.stopPropagation(); }}
                                         />
                                     ) : (
                                         <div className="w-full h-full text-base text-[#eca013] font-mono phosphor-glow overflow-hidden markdown-preview">
@@ -1066,7 +1091,7 @@ export function CanvasEditor() {
             </div>
       </div>
       <div className="absolute bottom-6 left-6 text-[10px] text-[#eca013]/60 bg-[#0a0b10]/90 px-3 py-2 rounded border border-[#eca013]/20 font-mono backdrop-blur-sm pointer-events-none z-40">
-        <span className="font-bold text-[#eca013]">CMD:</span> SCRL=ZOOM // CLICK_DRAG=PAN
+        <span className="font-bold text-[#eca013]">CMD:</span> SCRL=PAN // CTRL+SCRL=ZOOM // MID_CLICK=PAN
       </div>
 
       {/* Tag Lens HUD */}
