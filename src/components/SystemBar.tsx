@@ -6,7 +6,7 @@ import { useCanvas } from "@/context/CanvasContext";
 import { ProfileModal } from "./ProfileModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
-export function SystemBar() {
+export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -208,12 +208,13 @@ export function SystemBar() {
                  <div className="w-full h-1 bg-[#eca013]/10 mt-1 rounded-full overflow-hidden">
                     <div className="h-full bg-[#eca013] w-[48%]"></div>
                  </div>
-                 <Link href="/">
-                    <button className="w-full mt-3 flex items-center justify-center gap-2 text-[#eca013]/50 hover:text-red-500 hover:bg-red-500/10 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-wider">
+                 <button 
+                    onClick={onShutdown}
+                    className="w-full mt-3 flex items-center justify-center gap-2 text-[#eca013]/50 hover:text-red-500 hover:bg-red-500/10 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-wider"
+                 >
                         <span className="material-symbols-outlined text-[14px]">power_settings_new</span>
                         Terminate_Uplink
-                    </button>
-                 </Link>
+                 </button>
               </div>
           </div>
       )}
