@@ -559,7 +559,7 @@ export function CanvasEditor() {
         <div className="flex flex-col items-center z-10 animate-pulse">
             <span className="material-symbols-outlined text-6xl mb-4 opacity-50">satellite_alt</span>
             <h2 className="text-2xl font-bold tracking-[0.2em] mb-2">SYSTEM STANDBY</h2>
-            <p className="text-xs font-mono opacity-50 tracking-widest mb-6">ESTABLISH_UPLINK_TO_PROCEED</p>
+            <p className="text-xs font-mono opacity-50 tracking-widest mb-6">ESTABLISH_UPLINK_TO_ENABLE_TOOLS</p>
             <button 
                 onClick={() => document.querySelector<HTMLButtonElement>('.archives-trigger')?.click()}
                 className="px-6 py-2 border border-[#eca013] text-[#eca013] hover:bg-[#eca013] hover:text-[#0a0b10] transition-colors rounded font-bold tracking-widest text-sm flex items-center gap-2"
@@ -588,7 +588,7 @@ export function CanvasEditor() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
       {/* Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/90 shadow-[0_0_20px_rgba(236,160,19,0.3)] rounded-full border border-[#eca013] backdrop-blur-md">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/90 shadow-[0_0_20px_rgba(236,160,19,0.3)] rounded-full border border-[#eca013] backdrop-blur-md">
          
          {/* Canvas Name Badge */}
          <div className="pl-3 pr-2 border-r border-[#eca013]/30 flex items-center gap-2 opacity-80 cursor-default">
