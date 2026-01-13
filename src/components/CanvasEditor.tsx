@@ -450,9 +450,20 @@ export function CanvasEditor() {
       return 0; 
   });
 
+  const getCursor = () => {
+      switch(activeTool) {
+          case 'connect': return 'crosshair';
+          case 'card':
+          case 'sticky':
+          case 'text': return 'copy';
+          default: return 'default';
+      }
+  };
+
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden bg-[#0a0b10]" onKeyDown={handleKeyDown} tabIndex={0} onClick={handleCanvasClick}>
-      <div className="absolute inset-0 pointer-events-none retro-grid opacity-100"></div>
+      <div className="absolute inset-0 pointer-events-none retro-grid opacity-100 mix-blend-screen"></div>
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
       {/* Toolbar */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-2 bg-[#0a0b10]/90 shadow-[0_0_15px_rgba(236,160,19,0.2)] rounded border border-[#eca013] backdrop-blur-md">
@@ -474,9 +485,9 @@ export function CanvasEditor() {
       </div>
 
        {/* Canvas */}
-      <div ref={canvasRef} className="flex-1 relative cursor-crosshair overflow-hidden" 
+      <div ref={canvasRef} className="flex-1 relative overflow-hidden" 
            onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-           style={{ cursor: activeTool === "connect" ? "crosshair" : "default" }}>
+           style={{ cursor: getCursor() }}>
            
         {/* Connections */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
@@ -511,19 +522,24 @@ export function CanvasEditor() {
                 return (
                     <div
                         key={element.id}
-                        className={`absolute border-2 border-dashed border-[#eca013]/50 rounded-lg transition-all element-container ${isSelected ? 'border-[#eca013] bg-[#eca013]/5 z-10' : 'z-0'}`}
+                        className={`absolute border-2 border-dashed border-[#eca013]/30 rounded-lg transition-all element-container ${isSelected ? 'border-[#eca013] bg-[#eca013]/5 z-10' : 'z-0'} ${activeTool === 'connect' ? '!cursor-crosshair' : ''}`}
                         style={{ left: pos.x, top: pos.y, width: element.width, height: element.height }}
                         onMouseDown={(e) => handleElementMouseDown(e, element)}
                     >
-                        <div className="absolute -top-6 left-0 px-2 py-0.5 bg-[#eca013] text-[#0a0b10] text-xs font-bold font-mono uppercase rounded-t tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing">
-                             <button className="hover:bg-black/20 rounded p-0.5 collapse-btn" onClick={() => toggleFolderCollapse(element)}>
-                                <span className="material-symbols-outlined text-[14px]">
+                         {/* Visual Tab */}
+                        <div className={`absolute -top-7 left-[-2px] h-7 px-3 bg-[#eca013]/10 border-t border-x border-[#eca013]/30 text-[#eca013] text-xs font-bold font-mono uppercase rounded-t-lg tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing backdrop-blur-md ${isSelected ? 'bg-[#eca013]/20 border-[#eca013]' : ''} ${activeTool === 'connect' ? '!cursor-crosshair' : ''}`}>
+                             <div className="flex gap-1 mr-2 opacity-50">
+                                <div className="w-1 h-3 bg-[#eca013] rounded-full"></div>
+                                <div className="w-1 h-3 bg-[#eca013] rounded-full"></div>
+                            </div>
+                             <button className="hover:bg-[#eca013]/20 rounded p-0.5 collapse-btn flex items-center justify-center transition-colors -ml-1" onClick={() => toggleFolderCollapse(element)}>
+                                <span className="material-symbols-outlined text-[18px]">
                                     {folderData.collapsed ? 'expand_more' : 'expand_less'}
                                 </span>
                              </button>
-                             <span className="material-symbols-outlined text-[14px]">folder_open</span>
+                             <span className="material-symbols-outlined text-[16px] opacity-70">folder_open</span>
                              <input 
-                                className="bg-transparent outline-none w-24 placeholder-black/50"
+                                className="bg-transparent outline-none w-32 placeholder-[#eca013]/40 text-[#eca013] font-bold"
                                 value={folderData.title}
                                 onChange={e => {
                                     handleFolderContentChange(element.id, e.target.value, folderData.collapsed);
@@ -542,6 +558,7 @@ export function CanvasEditor() {
                     className={`absolute rounded-lg shadow-lg backdrop-blur-sm transition-all select-none element-container flex flex-col
                         ${isSelected ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50" : "border border-[#eca013]/30 hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"}
                         ${element.type === "card" ? "bg-[#0a0b10]/90" : ""}
+                        ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
                     `}
                     style={{
                         left: pos.x, top: pos.y, width: element.width, minHeight: element.height,
@@ -552,7 +569,9 @@ export function CanvasEditor() {
                     onMouseDown={(e) => handleElementMouseDown(e, element)}
                 >
                     <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
-                        ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}`}>
+                        ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}
+                        ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
+                    `}>
                         <div className="flex gap-1">
                             <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
                             <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>

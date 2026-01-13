@@ -125,9 +125,18 @@ body {
 }
 
 /* Background grid for canvas */
+/* Background grid for canvas */
 .retro-grid {
-  background-image: radial-gradient(#1a160f 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(rgba(236, 160, 19, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 160, 19, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-move 60s linear infinite;
+}
+
+@keyframes grid-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
 }
 
 /* Autofill Hack for Dark Theme */
