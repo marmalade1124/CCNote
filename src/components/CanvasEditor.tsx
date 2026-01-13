@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useCanvas } from "@/context/CanvasContext";
 import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useSfx } from "@/hooks/useSfx";
 import { Radar } from "./Radar";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -87,6 +88,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 
 export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
+  const { playClick, playHover, playConfirm, playConnect } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   // Replaced dragOffset with explicit start refs for scaling support
@@ -575,12 +577,15 @@ export function CanvasEditor() {
     const y = (e.clientY - rect.top - viewOffset.y) / zoom;
 
     if (activeTool === "card") {
+      playConfirm();
       addElement({ type: "card", x, y, width: 300, height: 180, content: serializeCardContent("Note_Alpha", "Enter data..."), rotation: 0 });
       setActiveTool("select");
     } else if (activeTool === "sticky") {
+      playConfirm();
       addElement({ type: "sticky", x, y, width: 200, height: 200, content: "Quick_Memo", color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)], rotation: 0 }); 
       setActiveTool("select");
     } else if (activeTool === "text") {
+      playConfirm();
       addElement({ type: "text", x, y, width: 200, height: 40, content: ">_ TYPE_HERE", rotation: 0 });
       setActiveTool("select");
     } else {
@@ -595,9 +600,11 @@ export function CanvasEditor() {
 
     if (activeTool === "connect") {
       if (connectionStart === null) {
+        playClick();
         setConnectionStart(element.id);
       } else if (connectionStart !== element.id) {
         addConnection(connectionStart, element.id);
+        playConnect();
         setConnectionStart(null);
       }
       return;
@@ -984,8 +991,10 @@ export function CanvasEditor() {
                     key={tool}
                     title={tool.toUpperCase()}
                     className={`p-2 rounded-full transition-all tactile-btn relative group ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"}`}
+                    onMouseEnter={playHover}
                     onClick={(e) => { 
                         e.stopPropagation(); 
+                        playClick();
                         if (tool === 'image') {
                             fileInputRef.current?.click();
                         } else {
@@ -1014,7 +1023,12 @@ export function CanvasEditor() {
             <button 
                 title={viewMode === 'editor' ? "SWITCH TO GRAPH" : "SWITCH TO EDITOR"}
                 className={`p-2 rounded-full transition-all tactile-btn relative group ${viewMode === 'graph' ? "bg-[#39ff14] text-[#0a0b10] shadow-[0_0_10px_#39ff14]" : "text-[#39ff14] hover:bg-[#39ff14]/10"}`}
-                onClick={(e) => { e.stopPropagation(); setViewMode(prev => prev === 'editor' ? 'graph' : 'editor'); }}
+                onMouseEnter={playHover}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    playConfirm();
+                    setViewMode(prev => prev === 'editor' ? 'graph' : 'editor'); 
+                }}
             >
                 <span className="material-symbols-outlined text-[20px]">{viewMode === 'editor' ? 'grain' : 'grid_view'}</span>
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#39ff14] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
@@ -1039,6 +1053,7 @@ export function CanvasEditor() {
                        onMouseDown={(e) => { e.preventDefault(); /* Prevent focus loss */ }}
                        onClick={(e) => { 
                            e.stopPropagation();
+                           playConfirm();
                            executeCommand(i);
                        }}
                    >
