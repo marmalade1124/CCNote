@@ -145,6 +145,8 @@ export function CanvasEditor() {
       index: number;
   } | null>(null);
 
+  const [viewMode, setViewMode] = useState<'editor' | 'graph'>('editor');
+  
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
@@ -977,7 +979,7 @@ export function CanvasEditor() {
 
          <div className="flex items-center gap-1">
             <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
-            {['select', 'pan', 'connect', 'card', 'sticky', 'text', 'image'].map(tool => (
+            {['select', 'pan', 'connect', 'card', 'sticky', 'image'].map(tool => (
                 <button 
                     key={tool}
                     title={tool.toUpperCase()}
@@ -997,7 +999,6 @@ export function CanvasEditor() {
                         connect: 'hub',
                         card: 'crop_landscape',
                         sticky: 'sticky_note_2',
-                        text: 'text_fields',
                         image: 'image'
                     }[tool as string]}</span>
                     
@@ -1007,6 +1008,19 @@ export function CanvasEditor() {
                     </span>
                 </button>
             ))}
+
+            <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
+
+            <button 
+                title={viewMode === 'editor' ? "SWITCH TO GRAPH" : "SWITCH TO EDITOR"}
+                className={`p-2 rounded-full transition-all tactile-btn relative group ${viewMode === 'graph' ? "bg-[#39ff14] text-[#0a0b10] shadow-[0_0_10px_#39ff14]" : "text-[#39ff14] hover:bg-[#39ff14]/10"}`}
+                onClick={(e) => { e.stopPropagation(); setViewMode(prev => prev === 'editor' ? 'graph' : 'editor'); }}
+            >
+                <span className="material-symbols-outlined text-[20px]">{viewMode === 'editor' ? 'grain' : 'grid_view'}</span>
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#39ff14] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
+                        {viewMode === 'editor' ? 'LOGIC_GRAPH' : 'VISUAL_EDITOR'}
+                </span>
+            </button>
          </div>
       </div>
 
@@ -1075,7 +1089,31 @@ export function CanvasEditor() {
                     const pos = getElementPosition(element);
                     const isSelected = selectedElement === element.id;
                     const isDragTarget = dragTargetId === element.id;
-                    
+
+                    // --- LOGIC GRAPH MODE rendering ---
+                    if (viewMode === 'graph') {
+                        return (
+                            <div
+                                key={element.id}
+                                className={`absolute rounded-full transition-all flex items-center justify-center cursor-pointer shadow-[0_0_10px_rgba(236,160,19,0.3)]
+                                    ${isSelected ? 'bg-[#39ff14] shadow-[0_0_15px_#39ff14] z-50 scale-150' : 'bg-[#eca013] hover:scale-125 z-10'}
+                                `}
+                                style={{
+                                    left: pos.x + element.width / 2 - 8, // Center dot
+                                    top: pos.y + element.height / 2 - 8,
+                                    width: 16, height: 16
+                                }}
+                                onMouseDown={(e) => handleElementMouseDown(e, element)}
+                            >
+                                {/* Tooltip on hover */}
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#0a0b10] text-[#eca013] text-[10px] px-2 py-1 rounded border border-[#eca013]/30 opacity-0 hover:opacity-100 pointer-events-none whitespace-nowrap shadow-xl z-50 transition-opacity">
+                                    {element.type === 'card' ? parseCardContent(element.content).title || 'CARD' : element.type.toUpperCase()}
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // --- EDITOR MODE rendering ---
                     if (element.type === 'folder') {
                         const folderData = parseFolderContent(getElementContent(element));
                         return (
