@@ -88,7 +88,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 
 export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
-  const { playClick, playHover, playConfirm, playConnect } = useSfx();
+  const { playClick, playHover, playConfirm, playConnect, playTyping } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   // Replaced dragOffset with explicit start refs for scaling support
@@ -223,6 +223,8 @@ export function CanvasEditor() {
       setContent: (s: string) => void,
       fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title' = 'plain'
   ) => {
+       playTyping(); // Play sound on every key press in inputs
+
        // Command Menu Navigation
        if (commandMenu && commandMenu.visible && commandMenu.elementId === elementId) {
            activeCommandSetter.current = setContent; // Update setter reference
@@ -975,7 +977,7 @@ export function CanvasEditor() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
       {/* Toolbar */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/90 shadow-[0_0_20px_rgba(236,160,19,0.3)] rounded-full border border-[#eca013] backdrop-blur-md">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/95 shadow-[0_0_20px_rgba(236,160,19,0.3)] border-y-2 border-[#eca013] backdrop-blur-md clip-tech">
          
          {/* Canvas Name Badge */}
          <div className="pl-3 pr-2 border-r border-[#eca013]/30 flex items-center gap-2 opacity-80 cursor-default">
@@ -990,7 +992,7 @@ export function CanvasEditor() {
                 <button 
                     key={tool}
                     title={tool.toUpperCase()}
-                    className={`p-2 rounded-full transition-all tactile-btn relative group ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"}`}
+                    className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10] border-[#eca013] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10 hover:border-[#eca013]/50"}`}
                     onMouseEnter={playHover}
                     onClick={(e) => { 
                         e.stopPropagation(); 
@@ -1022,7 +1024,7 @@ export function CanvasEditor() {
 
             <button 
                 title={viewMode === 'editor' ? "SWITCH TO GRAPH" : "SWITCH TO EDITOR"}
-                className={`p-2 rounded-full transition-all tactile-btn relative group ${viewMode === 'graph' ? "bg-[#39ff14] text-[#0a0b10] shadow-[0_0_10px_#39ff14]" : "text-[#39ff14] hover:bg-[#39ff14]/10"}`}
+                className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${viewMode === 'graph' ? "bg-[#39ff14] text-[#0a0b10] border-[#39ff14] shadow-[0_0_10px_#39ff14]" : "text-[#39ff14] hover:bg-[#39ff14]/10 hover:border-[#39ff14]/50"}`}
                 onMouseEnter={playHover}
                 onClick={(e) => { 
                     e.stopPropagation(); 

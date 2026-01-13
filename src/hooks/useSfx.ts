@@ -3,26 +3,24 @@ import { useCallback, useEffect, useRef } from 'react';
 export const useSfx = () => {
     const audioCtx = useRef<AudioContext | null>(null);
 
-    useEffect(() => {
-        // Initialize Audio Context on user interaction usually, but here on mount (lazy init later)
-        if (typeof window !== 'undefined') {
+    // Lazy Init to handle Autoplay Policy
+    const initAudio = useCallback(() => {
+        if (typeof window !== 'undefined' && !audioCtx.current) {
             const Ctx = window.AudioContext || (window as any).webkitAudioContext;
             audioCtx.current = new Ctx();
         }
-        return () => {
-            if (audioCtx.current) activeOscillators.current.forEach(o => o.stop());
-        };
+        if (audioCtx.current?.state === 'suspended') {
+            audioCtx.current.resume();
+        }
     }, []);
 
     const activeOscillators = useRef<OscillatorNode[]>([]);
 
     const playTone = useCallback((freq: number, type: OscillatorType, duration: number, vol = 0.1) => {
+        initAudio();
         if (!audioCtx.current) return;
         const ctx = audioCtx.current;
         
-        // Resume context if suspended (browser auto-play policy)
-        if (ctx.state === 'suspended') ctx.resume();
-
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
@@ -37,26 +35,20 @@ export const useSfx = () => {
 
         osc.start();
         osc.stop(ctx.currentTime + duration);
-        
-        // Cleanup ref? 
-        // We generally fire and forget for UI sounds.
-    }, []);
+    }, [initAudio]);
 
     const playClick = useCallback(() => {
-        // High pitched blip
         playTone(800, 'square', 0.05, 0.05);
     }, [playTone]);
 
     const playHover = useCallback(() => {
-        // Very subtle tick
         playTone(200, 'sine', 0.02, 0.02);
     }, [playTone]);
 
     const playConfirm = useCallback(() => {
-        // Ascending chime
+        initAudio();
         if (!audioCtx.current) return;
         const ctx = audioCtx.current;
-        if (ctx.state === 'suspended') ctx.resume();
         
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
@@ -72,17 +64,12 @@ export const useSfx = () => {
         gain.connect(ctx.destination);
         osc.start();
         osc.stop(now + 0.3);
-    }, []);
-
-    const playError = useCallback(() => {
-        playTone(150, 'sawtooth', 0.2, 0.05);
-    }, [playTone]);
+    }, [initAudio]);
 
     const playConnect = useCallback(() => {
-        // Sci-fi "Link" sound
-         if (!audioCtx.current) return;
+        initAudio();
+        if (!audioCtx.current) return;
         const ctx = audioCtx.current;
-        if (ctx.state === 'suspended') ctx.resume();
 
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
@@ -106,7 +93,41 @@ export const useSfx = () => {
 
         osc.start();
         osc.stop(now + 0.4);
-    }, []);
+    }, [initAudio]);
 
-    return { playClick, playHover, playConfirm, playError, playConnect };
+    const playTyping = useCallback(() => {
+         // Mechanical Switch Sound (Thocc-ish)
+         initAudio();
+         if (!audioCtx.current) return;
+         const ctx = audioCtx.current;
+         const now = ctx.currentTime;
+
+         // 1. High Click (Switch Leaf)
+         const osc = ctx.createOscillator();
+         const gain = ctx.createGain();
+         osc.type = 'triangle'; // Softer than square
+         osc.frequency.setValueAtTime(2000, now);
+         osc.frequency.exponentialRampToValueAtTime(1000, now + 0.05);
+         gain.gain.setValueAtTime(0.05, now);
+         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+         osc.connect(gain);
+         gain.connect(ctx.destination);
+         osc.start();
+         osc.stop(now + 0.05);
+
+         // 2. Low Thump (Bottom Out)
+         const osc2 = ctx.createOscillator();
+         const gain2 = ctx.createGain();
+         osc2.type = 'sine';
+         osc2.frequency.setValueAtTime(200, now);
+         osc2.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+         gain2.gain.setValueAtTime(0.15, now); // Louder low end
+         gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+         osc2.connect(gain2);
+         gain2.connect(ctx.destination);
+         osc2.start();
+         osc2.stop(now + 0.1);
+    }, [initAudio]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping };
 };
