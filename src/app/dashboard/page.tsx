@@ -32,7 +32,7 @@ export default function DashboardPage() {
         <CommandPalette onLogout={handleShutdown} />
 
         {/* Flickering Terminal Turn-On Container */}
-        <div className="pt-14 h-screen w-full animate-turn-on relative z-0">
+        <div className="pt-14 h-screen w-full animate-turn-on relative z-0 flex flex-col">
           <CanvasEditor />
         </div>
         
