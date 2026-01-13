@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useCallback, useEffect, useState } from "react";
-import { Canvas, CanvasElement, Connection, DbCanvas, DbElement, DbConnection } from "@/types/canvas";
+import { Canvas, CanvasElement, Connection, DbCanvas, DbElement, DbConnection, CanvasTool } from "@/types/canvas";
 import { supabase } from "@/lib/supabase";
 
 interface CanvasContextType {
@@ -23,6 +23,8 @@ interface CanvasContextType {
   deleteConnection: (connectionId: string) => Promise<void>;
   user: any | null;
   updateUser: (updates: { full_name?: string }) => Promise<void>;
+  activeTool: CanvasTool;
+  setActiveTool: (tool: CanvasTool) => void;
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
@@ -70,6 +72,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   const activeCanvas = canvases.find((c) => c.id === activeCanvasId) || null;
 
   const [user, setUser] = useState<any | null>(null);
+  const [activeTool, setActiveTool] = useState<CanvasTool>("select");
 
   // Fetch all canvases from Supabase
   const refreshCanvases = useCallback(async () => {
@@ -528,6 +531,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         deleteConnection,
         user,
         updateUser,
+        activeTool,
+        setActiveTool,
       }}
     >
       {children}

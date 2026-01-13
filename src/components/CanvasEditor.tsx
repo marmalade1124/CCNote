@@ -83,7 +83,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 }
 
 export function CanvasEditor() {
-  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection } = useCanvas();
+  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -95,7 +95,6 @@ export function CanvasEditor() {
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTool, setActiveTool] = useState<"select" | "card" | "sticky" | "text" | "connect" | "folder" | "image">("select");
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
 
   const [localContent, setLocalContent] = useState<Record<string, string>>({});

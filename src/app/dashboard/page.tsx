@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CanvasProvider } from "@/context/CanvasContext";
 import { SystemBar } from "@/components/SystemBar";
 import { CanvasEditor } from "@/components/CanvasEditor";
+import { CommandPalette } from "@/components/CommandPalette";
 
 export default function DashboardPage() {
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -28,6 +29,7 @@ export default function DashboardPage() {
 
         {/* Top-Mounted HUD (SystemBar) */}
         <SystemBar onShutdown={handleShutdown} />
+        <CommandPalette onLogout={handleShutdown} />
 
         {/* Flickering Terminal Turn-On Container */}
         <div className="pt-14 h-screen w-full animate-turn-on relative z-0">
