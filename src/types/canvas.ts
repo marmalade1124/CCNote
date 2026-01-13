@@ -53,7 +53,7 @@ export interface Connection {
   to: string;
 }
 
-export type CanvasTool = "select" | "card" | "sticky" | "text" | "connect" | "folder" | "image";
+export type CanvasTool = "select" | "card" | "sticky" | "text" | "connect" | "folder" | "image" | "pan";
 
 export interface Canvas {
   id: string;
