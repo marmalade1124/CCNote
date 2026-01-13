@@ -26,7 +26,30 @@ function serializeCardContent(title: string, description: string): string {
   return `${title}||${description}`;
 }
 
-// Bounding box helper
+interface FolderContent {
+  title: string;
+  collapsed: boolean;
+}
+
+function parseFolderContent(content: string): FolderContent {
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === 'object' && parsed !== null) {
+      return { 
+        title: parsed.title || "Untitled Group", 
+        collapsed: !!parsed.collapsed 
+      };
+    }
+    return { title: "Untitled Group", collapsed: false };
+  } catch (e) {
+    return { title: content, collapsed: false };
+  }
+}
+
+function serializeFolderContent(title: string, collapsed: boolean): string {
+  return JSON.stringify({ title, collapsed });
+}
+
 function getBoundingBox(elements: CanvasElement[]) {
   if (elements.length === 0) return { x: 0, y: 0, width: 400, height: 400 };
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -41,7 +64,6 @@ function getBoundingBox(elements: CanvasElement[]) {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-// Collision detection
 function isOverlapping(a: {x: number, y: number, width: number, height: number}, b: {x: number, y: number, width: number, height: number}) {
   return (
     a.x < b.x + b.width &&
@@ -75,8 +97,95 @@ export function CanvasEditor() {
     debouncedUpdateContent(elementId, content);
   };
 
+  const handleFolderContentChange = (elementId: string, newTitle: string, currentCollapsed: boolean) => {
+      const content = serializeFolderContent(newTitle, currentCollapsed);
+      handleContentChange(elementId, content);
+  };
+
   const getElementContent = (element: CanvasElement) => {
     return localContent[element.id] ?? element.content;
+  };
+
+  const reorganizeFolder = async (folderId: string, currentChildren: CanvasElement[]) => {
+      const folder = activeCanvas?.elements.find(e => e.id === folderId);
+      if (!folder) return;
+
+      const contentStr = localContent[folderId] ?? folder.content;
+      const { collapsed } = parseFolderContent(contentStr);
+
+      const PADDING = 24;
+      const HEADER = 40;
+      const COL_WIDTH = 320; 
+      const ROW_HEIGHT = 220; 
+
+      const sorted = [...currentChildren].sort((a,b) => (a.y - b.y) || (a.x - b.x));
+      
+      const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
+      
+      if (collapsed) {
+          // Stack visually at folder location but keep logical containment
+          for (const child of sorted) {
+              if (child.x !== folder.x || child.y !== folder.y) {
+                    batchUpdates.push({ id: child.id, changes: { x: folder.x, y: folder.y } });
+              }
+          }
+           if (folder.width !== 220 || folder.height !== 50) {
+               batchUpdates.push({ id: folderId, changes: { width: 220, height: 50 } });
+          }
+      } else {
+          for (let i = 0; i < sorted.length; i++) {
+              const child = sorted[i];
+              const col = i % 2;
+              const row = Math.floor(i / 2);
+              
+              const newX = folder.x + PADDING + (col * COL_WIDTH);
+              const newY = folder.y + HEADER + PADDING + (row * ROW_HEIGHT);
+              
+              if (child.x !== newX || child.y !== newY) {
+                  batchUpdates.push({ id: child.id, changes: { x: newX, y: newY } });
+              }
+          }
+
+          const cols = Math.min(sorted.length, 2);
+          const rows = Math.ceil(sorted.length / 2);
+          
+          const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); 
+          const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
+          
+          if (folder.width !== newWidth || folder.height !== newHeight) {
+               batchUpdates.push({ id: folderId, changes: { width: newWidth, height: newHeight } });
+          }
+      }
+      
+      if (batchUpdates.length > 0) {
+          await updateElements(batchUpdates);
+      }
+  };
+
+  const toggleFolderCollapse = async (element: CanvasElement) => {
+      const currentContent = getElementContent(element);
+      const data = parseFolderContent(currentContent);
+      const newCollapsed = !data.collapsed;
+      
+      const newContent = serializeFolderContent(data.title, newCollapsed);
+      
+      handleContentChange(element.id, newContent); 
+      
+      if (newCollapsed) {
+          // Collapse
+          await updateElement(element.id, { height: 50, width: 220, content: newContent });
+          // Children hidden by render logic, but let's ensure they update pos if needed?
+          // No, re-render will hide them. reorganizeFolder will be skipped or called?
+          // Better call reorganize to "Pack" them
+          const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
+          // We need to pass updated collapsed state? No reorganize checks localContent
+          await reorganizeFolder(element.id, children);
+      } else {
+           // Expand
+           await updateElement(element.id, { content: newContent });
+           const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
+           await reorganizeFolder(element.id, children);
+      }
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -108,7 +217,6 @@ export function CanvasEditor() {
   const handleElementMouseDown = (e: React.MouseEvent, element: CanvasElement) => {
     e.stopPropagation();
 
-    // CONNECT TOOL
     if (activeTool === "connect") {
       if (connectionStart === null) {
         setConnectionStart(element.id);
@@ -119,9 +227,10 @@ export function CanvasEditor() {
       return;
     }
 
-    // DRAG HANDLE CHECK (Only allow dragging from specific areas)
+    // Allow clicking collapse button without dragging
+    if ((e.target as HTMLElement).closest('.collapse-btn')) return;
+
     if (!(e.target as HTMLElement).closest('.drag-handle')) {
-        // Allow selecting even if not dragging
         setSelectedElement(element.id);
         return;
     }
@@ -152,49 +261,6 @@ export function CanvasEditor() {
     }));
   }, [isDragging, dragOffset, activeTool]);
 
-  // Auto-layout helper
-  const reorganizeFolder = async (folderId: string, currentChildren: CanvasElement[]) => {
-      const folder = activeCanvas?.elements.find(e => e.id === folderId);
-      if (!folder) return;
-
-      const PADDING = 24;
-      const HEADER = 40;
-      const COL_WIDTH = 320; 
-      const ROW_HEIGHT = 220; 
-
-      const sorted = [...currentChildren].sort((a,b) => (a.y - b.y) || (a.x - b.x));
-      
-      const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
-      
-      for (let i = 0; i < sorted.length; i++) {
-          const child = sorted[i];
-          const col = i % 2;
-          const row = Math.floor(i / 2);
-          
-          const newX = folder.x + PADDING + (col * COL_WIDTH);
-          const newY = folder.y + HEADER + PADDING + (row * ROW_HEIGHT);
-          
-          if (child.x !== newX || child.y !== newY) {
-              batchUpdates.push({ id: child.id, changes: { x: newX, y: newY } });
-          }
-      }
-
-      // Resize Folder
-      const cols = Math.min(sorted.length, 2);
-      const rows = Math.ceil(sorted.length / 2);
-      
-      const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); 
-      const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
-      
-      if (folder.width !== newWidth || folder.height !== newHeight) {
-           batchUpdates.push({ id: folderId, changes: { width: newWidth, height: newHeight } });
-      }
-      
-      if (batchUpdates.length > 0) {
-          await updateElements(batchUpdates);
-      }
-  };
-
   const handleMouseUp = useCallback(async () => {
     if (!isDragging || !dragElementRef.current || !activeCanvas) {
         setIsDragging(false);
@@ -217,7 +283,6 @@ export function CanvasEditor() {
         return;
     }
 
-    // Check collision for Grouping (only if dragging a non-folder node)
     if (draggedElement.type !== 'folder') {
         const target = activeCanvas.elements.find(el => 
             el.id !== draggedId && 
@@ -228,13 +293,15 @@ export function CanvasEditor() {
         );
 
         if (target) {
-            // Dragged INTO folder
             if (target.type === 'folder') {
-                // Must explicitly update parentId
+                const targetContent = localContent[target.id] ?? target.content;
+                const { collapsed } = parseFolderContent(targetContent);
+
                 await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: target.id });
                 
+                // If target collapsed, we don't need to layout visible children? 
+                // But we should trigger layout to stack this new child hiddenly.
                 const children = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
-                // Pass updated dragged element to layout
                 await reorganizeFolder(target.id, [...children, { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id }]);
 
                 setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
@@ -242,15 +309,12 @@ export function CanvasEditor() {
                 dragElementRef.current = null;
                 return;
             } 
-            // Dragged onto other node -> Create Group
             else if (!target.parentId && !draggedElement.parentId) {
                 const PADDING = 24;
                 const HEADER = 40;
                 const COL_WIDTH = 320;
-                
-                // Pre-calc size for 2 items
                 const initialW = (PADDING * 2) + (2 * COL_WIDTH) - 20; 
-                const initialH = HEADER + PADDING + 220; // 1 row
+                const initialH = HEADER + PADDING + 220; 
 
                 const folder = await addElement({
                     type: 'folder',
@@ -280,7 +344,6 @@ export function CanvasEditor() {
             }
         }
         
-        // Drag Out Logic
         if (draggedElement.parentId) {
             const parent = activeCanvas.elements.find(el => el.id === draggedElement.parentId);
             if (parent) {
@@ -290,19 +353,13 @@ export function CanvasEditor() {
                 );
                 
                 if (!isStillInside) {
-                    // Ungroup dragged element
                     await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: null });
-                    
-                    // Check remaining siblings
                     const remaining = activeCanvas.elements.filter(el => el.parentId === parent.id && el.id !== draggedId);
                     
                     if (remaining.length <= 1) {
-                        // Explode folder
-                        await deleteElement(parent.id); // deleteElement logic releases children automatically in Context, or we can explicit
-                        // Note: deleteElement in Context unparents children first.
-                        // So the remaining child will become parentId: null.
-                        // But its position might be weird (inside the deleted folder area).
-                        // That's fine for now.
+                         // Must handle Promise carefully
+                         // Use deleteElement
+                         await deleteElement(parent.id);
                     } else {
                         await reorganizeFolder(parent.id, remaining);
                     }
@@ -316,7 +373,6 @@ export function CanvasEditor() {
         }
     }
 
-    // Normal Move update
     if (draggedElement.type === 'folder' && dragStartPosRef.current) {
         const deltaX = pos.x - dragStartPosRef.current.x;
         const deltaY = pos.y - dragStartPosRef.current.y;
@@ -331,12 +387,8 @@ export function CanvasEditor() {
         await updateElements(updates);
 
     } else {
-        // Child move within folder
         if (draggedElement.parentId) {
              const siblings = activeCanvas.elements.filter(el => el.parentId === draggedElement.parentId);
-             // We update the dragged pos locally first?
-             // Actually, we should just update it and let layout snap it back if needed
-             // OR snap it immediately.
              const updatedSiblings = siblings.map(s => s.id === draggedId ? { ...s, x: pos.x, y: pos.y } : s);
              await reorganizeFolder(draggedElement.parentId, updatedSiblings);
         } else {
@@ -349,9 +401,8 @@ export function CanvasEditor() {
     dragElementRef.current = null;
     dragStartPosRef.current = null;
 
-  }, [isDragging, localPositions, activeCanvas, updateElement, addElement, updateElements, deleteElement]);
+  }, [isDragging, localPositions, activeCanvas, updateElement, addElement, updateElements, deleteElement, localContent]); // Added localContent dep
 
-  // Helpers
   const getElementPosition = (element: CanvasElement) => {
     const local = localPositions[element.id];
     if (local && isDragging && dragElementRef.current === element.id) {
@@ -379,6 +430,20 @@ export function CanvasEditor() {
           setActiveTool('select');
       }
   };
+
+  // Determine collapsed folders set
+  const collapsedFolders = useMemo(() => {
+     const set = new Set<string>();
+     if (activeCanvas) {
+         activeCanvas.elements.forEach(el => {
+             if (el.type === 'folder') {
+                 const data = parseFolderContent(localContent[el.id] ?? el.content);
+                 if (data.collapsed) set.add(el.id);
+             }
+         });
+     }
+     return set;
+  }, [activeCanvas, localContent]);
 
   if (!activeCanvas) return <div className="flex-1 bg-[#0a0b10] flex items-center justify-center text-[#eca013]">Select Canvas...</div>;
 
@@ -426,7 +491,11 @@ export function CanvasEditor() {
           {activeCanvas.connections.map(conn => {
               const start = activeCanvas.elements.find(el => el.id === conn.from);
               const end = activeCanvas.elements.find(el => el.id === conn.to);
+              // Hide connection if either end is in a collapsed folder
               if(!start || !end) return null;
+              if (start.parentId && collapsedFolders.has(start.parentId)) return null;
+              if (end.parentId && collapsedFolders.has(end.parentId)) return null;
+              
               const sPos = getElementCenter(start);
               const ePos = getElementCenter(end);
               return <line key={conn.id} x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="#eca013" strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5"/>
@@ -434,10 +503,14 @@ export function CanvasEditor() {
         </svg>
 
         {sortedElements.map(element => {
+            // Hide if parent is collapsed
+            if (element.parentId && collapsedFolders.has(element.parentId)) return null;
+
             const pos = getElementPosition(element);
             const isSelected = selectedElement === element.id;
             
             if (element.type === 'folder') {
+                const folderData = parseFolderContent(getElementContent(element));
                 return (
                     <div
                         key={element.id}
@@ -446,11 +519,18 @@ export function CanvasEditor() {
                         onMouseDown={(e) => handleElementMouseDown(e, element)}
                     >
                         <div className="absolute -top-6 left-0 px-2 py-0.5 bg-[#eca013] text-[#0a0b10] text-xs font-bold font-mono uppercase rounded-t tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing">
+                             <button className="hover:bg-black/20 rounded p-0.5 collapse-btn" onClick={() => toggleFolderCollapse(element)}>
+                                <span className="material-symbols-outlined text-[14px]">
+                                    {folderData.collapsed ? 'expand_more' : 'expand_less'}
+                                </span>
+                             </button>
                              <span className="material-symbols-outlined text-[14px]">folder_open</span>
                              <input 
                                 className="bg-transparent outline-none w-24 placeholder-black/50"
-                                value={getElementContent(element)}
-                                onChange={e => handleContentChange(element.id, e.target.value)}
+                                value={folderData.title}
+                                onChange={e => {
+                                    handleFolderContentChange(element.id, e.target.value, folderData.collapsed);
+                                }}
                                 onClick={e => e.stopPropagation()}
                                 onMouseDown={e => e.stopPropagation()}
                             />
@@ -474,7 +554,6 @@ export function CanvasEditor() {
                     }}
                     onMouseDown={(e) => handleElementMouseDown(e, element)}
                 >
-                    {/* Visual Tab / Drag Handle */}
                     <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
                         ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}`}>
                         <div className="flex gap-1">
@@ -485,7 +564,6 @@ export function CanvasEditor() {
                     </div>
 
                     <div className="p-4 flex-1 flex flex-col">
-                        {/* Content */}
                         {element.type === "card" && (() => {
                             const cardData = parseCardContent(getElementContent(element));
                             return (
