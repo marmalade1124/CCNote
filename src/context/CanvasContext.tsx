@@ -21,6 +21,8 @@ interface CanvasContextType {
   refreshCanvases: () => Promise<void>;
   addConnection: (fromId: string, toId: string) => Promise<void>;
   deleteConnection: (connectionId: string) => Promise<void>;
+  user: any | null;
+  updateUser: (updates: { full_name?: string }) => Promise<void>;
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
@@ -67,6 +69,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   const isConnected = supabase !== null;
   const activeCanvas = canvases.find((c) => c.id === activeCanvasId) || null;
 
+  const [user, setUser] = useState<any | null>(null);
+
   // Fetch all canvases from Supabase
   const refreshCanvases = useCallback(async () => {
     if (!supabase) {
@@ -74,6 +78,10 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // Auth Check
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+
     setIsLoading(true);
     try {
       // Fetch Canvases
@@ -491,6 +499,14 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
     [activeCanvasId]
   );
 
+  const updateUser = useCallback(async (updates: { full_name?: string }) => {
+     if (!supabase) return;
+     const { data, error } = await supabase.auth.updateUser({ data: updates });
+     if (!error && data.user) {
+         setUser(data.user);
+     }
+  }, []);
+
   return (
     <CanvasContext.Provider
       value={{
@@ -509,7 +525,9 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         deleteElement,
         refreshCanvases,
         addConnection,
-        deleteConnection, 
+        deleteConnection,
+        user,
+        updateUser,
       }}
     >
       {children}

@@ -3,13 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCanvas } from "@/context/CanvasContext";
+import { ProfileModal } from "./ProfileModal";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 export function Sidebar() {
-  const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading } = useCanvas();
+  const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useLocalStorage<string>(`avatar_${user?.id || 'guest'}`, "");
+  const [displayName, setDisplayName] = useLocalStorage<string>(`name_${user?.id || 'guest'}`, "OPERATOR");
 
   const handleCreate = async () => {
     if (newCanvasName.trim()) {
@@ -171,8 +177,33 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Sign Out */}
-      <div className="p-4 border-t border-[#eca013]/20 bg-[#0a0b10]">
+      {/* Footer / Profile */}
+      <div className="p-4 border-t border-[#eca013]/20 bg-[#0a0b10] flex flex-col gap-2">
+         {/* Profile Button */}
+         <button 
+            onClick={() => setIsProfileOpen(true)}
+            className="w-full flex items-center gap-3 p-2 rounded hover:bg-[#eca013]/10 transition-colors group text-left border border-transparent hover:border-[#eca013]/20"
+         >
+             <div className="size-8 rounded-full bg-[#eca013]/10 border border-[#eca013]/30 overflow-hidden flex items-center justify-center shrink-0">
+                 {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                 ) : (
+                    <span className="material-symbols-outlined text-[#eca013] text-sm">person</span>
+                 )}
+             </div>
+             <div className="flex-1 min-w-0">
+                 <div className="text-[#eca013] text-xs font-bold tracking-wider truncate uppercase">
+                    {displayName}
+                 </div>
+                 <div className="text-[#eca013]/40 text-[9px] font-mono tracking-widest flex items-center gap-1">
+                    <div className="size-1.5 bg-[#39ff14] rounded-full animate-pulse shadow-[0_0_5px_#39ff14]"></div>
+                    ONLINE
+                 </div>
+             </div>
+             <span className="material-symbols-outlined text-[#eca013]/40 group-hover:text-[#eca013]">settings</span>
+         </button>
+
         <Link href="/">
           <button className="w-full flex items-center justify-center gap-2 bg-[#1a160f] border border-[#eca013]/20 text-[#eca013]/60 hover:text-[#eca013] py-2 rounded text-xs font-bold tracking-widest hover:border-[#eca013]/50 transition-all uppercase tactile-btn">
             <span className="material-symbols-outlined text-sm">power_settings_new</span>
@@ -180,6 +211,15 @@ export function Sidebar() {
           </button>
         </Link>
       </div>
+      
+      <ProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatarUrl}
+        displayName={displayName}
+        onNameChange={setDisplayName}
+      />
     </aside>
   );
 }
