@@ -35,33 +35,42 @@ function parseFolderContent(content: string): FolderContent {
   try {
     const parsed = JSON.parse(content);
     if (typeof parsed === 'object' && parsed !== null) {
-      return { 
-        title: parsed.title || "Untitled Group", 
-        collapsed: !!parsed.collapsed 
-      };
+        return { 
+            title: parsed.title || "Untitled Group", 
+            collapsed: !!parsed.collapsed 
+        };
     }
-    return { title: "Untitled Group", collapsed: false };
-  } catch (e) {
-    return { title: content, collapsed: false };
-  }
+  } catch (e) {}
+  return { title: "Untitled Group", collapsed: false };
 }
 
 function serializeFolderContent(title: string, collapsed: boolean): string {
   return JSON.stringify({ title, collapsed });
 }
 
-function getBoundingBox(elements: CanvasElement[]) {
-  if (elements.length === 0) return { x: 0, y: 0, width: 400, height: 400 };
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  
-  elements.forEach(el => {
-    minX = Math.min(minX, el.x);
-    minY = Math.min(minY, el.y);
-    maxX = Math.max(maxX, el.x + el.width);
-    maxY = Math.max(maxY, el.y + el.height);
-  });
-  
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+interface ImageContent {
+    url: string;
+    title: string;
+    description: string;
+}
+
+function parseImageContent(content: string): ImageContent {
+    try {
+        const parsed = JSON.parse(content);
+        if (typeof parsed === 'object' && parsed !== null) {
+            return {
+                url: parsed.url || "",
+                title: parsed.title || "Image",
+                description: parsed.description || ""
+            };
+        }
+    } catch(e) {}
+    // Fallback? If legacy content?
+    return { url: "", title: "Image", description: "" };
+}
+
+function serializeImageContent(url: string, title: string, description: string): string {
+    return JSON.stringify({ url, title, description });
 }
 
 function isOverlapping(a: {x: number, y: number, width: number, height: number}, b: {x: number, y: number, width: number, height: number}) {
@@ -84,8 +93,9 @@ export function CanvasEditor() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragElementRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTool, setActiveTool] = useState<"select" | "card" | "sticky" | "text" | "connect" | "folder">("select");
+  const [activeTool, setActiveTool] = useState<"select" | "card" | "sticky" | "text" | "connect" | "folder" | "image">("select");
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
 
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
@@ -108,6 +118,40 @@ export function CanvasEditor() {
     return localContent[element.id] ?? element.content;
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) { // 2MB Limit for Base64 sanity
+          alert("Image is too large (Max 2MB for prototype).");
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+          const result = event.target?.result as string;
+          if (result && activeCanvas) {
+              const rect = canvasRef.current!.getBoundingClientRect();
+              const centerX = 100; // Default offset
+              const centerY = 100;
+              
+              await addElement({
+                  type: 'image',
+                  x: centerX, // Could be center of viewport if I tracked scroll/view, but static for now
+                  y: centerY,
+                  width: 300,
+                  height: 350,
+                  content: serializeImageContent(result, "Uploaded Image", "Description..."),
+                  rotation: 0
+              });
+              
+              // Reset
+              if (fileInputRef.current) fileInputRef.current.value = "";
+          }
+      };
+      reader.readAsDataURL(file);
+  };
+
   const reorganizeLayout = async (folder: CanvasElement, currentChildren: CanvasElement[], collapsedOverride?: boolean) => {
       if (!folder) return;
 
@@ -125,7 +169,6 @@ export function CanvasEditor() {
       const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
       
       if (collapsed) {
-          // Collapsed: Stack invisible children at folder location
           for (const child of sorted) {
               if (child.x !== folder.x || child.y !== folder.y) {
                     batchUpdates.push({ id: child.id, changes: { x: folder.x, y: folder.y } });
@@ -135,7 +178,6 @@ export function CanvasEditor() {
                batchUpdates.push({ id: folder.id, changes: { width: 220, height: 50 } });
           }
       } else {
-          // Expanded: Grid Layout relative to Folder
           for (let i = 0; i < sorted.length; i++) {
               const child = sorted[i];
               const col = i % 2;
@@ -151,7 +193,6 @@ export function CanvasEditor() {
 
           const cols = Math.min(sorted.length, 2);
           const rows = Math.ceil(sorted.length / 2);
-          
           const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); 
           const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
           
@@ -169,22 +210,17 @@ export function CanvasEditor() {
       const currentContent = getElementContent(element);
       const data = parseFolderContent(currentContent);
       const newCollapsed = !data.collapsed;
-      
       const newContent = serializeFolderContent(data.title, newCollapsed);
       
-      handleContentChange(element.id, newContent); 
-      
+      handleContentChange(element.id, newContent);
       const updatedFolder = { ...element, content: newContent };
       
       if (newCollapsed) {
-          // Collapse
           await updateElement(element.id, { height: 50, width: 220, content: newContent });
-          // Force layout with new collapsed state
           const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
           await reorganizeLayout(updatedFolder, children, true);
       } else {
-           // Expand
-           await updateElement(element.id, { content: newContent }); 
+           await updateElement(element.id, { content: newContent });
            const children = activeCanvas?.elements.filter(el => el.parentId === element.id) || [];
            await reorganizeLayout(updatedFolder, children, false);
       }
@@ -197,6 +233,8 @@ export function CanvasEditor() {
       setConnectionStart(null);
       return;
     }
+    
+    // Image tool is handled via button click directly
 
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -229,8 +267,9 @@ export function CanvasEditor() {
       return;
     }
 
-    // Allow clicking collapse button without dragging
     if ((e.target as HTMLElement).closest('.collapse-btn')) return;
+    // Allow inputs to focus without dragging
+    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
 
     if (!(e.target as HTMLElement).closest('.drag-handle')) {
         setSelectedElement(element.id);
@@ -262,27 +301,22 @@ export function CanvasEditor() {
       [dragElementRef.current!]: { x: newX, y: newY },
     }));
 
-    // HIT TEST for Drop Zones
     if (activeCanvas) {
         const draggedEl = activeCanvas.elements.find(el => el.id === dragElementRef.current);
         if (draggedEl) {
              const currentRect = { x: newX, y: newY, width: draggedEl.width, height: draggedEl.height };
-             
-             // Simple hitbox interaction: Find any element we overlap that isn't us
              const target = activeCanvas.elements.find(el => 
                 el.id !== draggedEl.id && 
                 isOverlapping(currentRect, el) &&
-                // Don't target own children in a weird recursive way (not possible with current logic but safe)
                 (draggedEl.type !== 'folder' || el.parentId !== draggedEl.id)
             );
-            
             setDragTargetId(target ? target.id : null);
         }
     }
   }, [isDragging, dragOffset, activeTool, activeCanvas]);
 
   const handleMouseUp = useCallback(async () => {
-    setDragTargetId(null); // Clear highlight
+    setDragTargetId(null);
 
     if (!isDragging || !dragElementRef.current || !activeCanvas) {
         setIsDragging(false);
@@ -317,11 +351,8 @@ export function CanvasEditor() {
         if (target) {
             if (target.type === 'folder') {
                 await updateElement(draggedId, { x: pos.x, y: pos.y, parentId: target.id });
-                
-                // Use FRESH children list
                 const otherChildren = activeCanvas.elements.filter(el => el.parentId === target.id && el.id !== draggedId);
                 const updatedDragged = { ...draggedElement, x: pos.x, y: pos.y, parentId: target.id };
-                
                 await reorganizeLayout(target, [...otherChildren, updatedDragged]);
 
                 setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
@@ -330,9 +361,7 @@ export function CanvasEditor() {
                 return;
             } 
             else if (!target.parentId && !draggedElement.parentId) {
-                const PADDING = 24;
-                const HEADER = 40;
-                const COL_WIDTH = 320;
+                const PADDING = 24; const HEADER = 40; const COL_WIDTH = 320;
                 const initialW = (PADDING * 2) + (2 * COL_WIDTH) - 20; 
                 const initialH = HEADER + PADDING + 220; 
 
@@ -350,7 +379,6 @@ export function CanvasEditor() {
                         { id: draggedId, changes: { parentId: folder.id } },
                         { id: target.id, changes: { parentId: folder.id } }
                     ]);
-                    
                     await reorganizeLayout(folder, [
                         { ...draggedElement, parentId: folder.id },
                         { ...target, parentId: folder.id }
@@ -381,7 +409,6 @@ export function CanvasEditor() {
                     } else {
                         await reorganizeLayout(parent, remaining);
                     }
-
                     setLocalPositions(prev => { const n = {...prev}; delete n[draggedId]; return n; });
                     setIsDragging(false);
                     dragElementRef.current = null;
@@ -420,7 +447,7 @@ export function CanvasEditor() {
     dragElementRef.current = null;
     dragStartPosRef.current = null;
 
-  }, [isDragging, localPositions, activeCanvas, updateElement, addElement, updateElements, deleteElement, localContent]); // Added localContent dep
+  }, [isDragging, localPositions, activeCanvas, updateElement, addElement, updateElements, deleteElement, localContent]);
 
   const getElementPosition = (element: CanvasElement) => {
     const local = localPositions[element.id];
@@ -439,6 +466,7 @@ export function CanvasEditor() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       if (e.key === "Delete" && selectedElement) {
           deleteElement(selectedElement);
           setSelectedElement(null);
@@ -469,7 +497,8 @@ export function CanvasEditor() {
           case 'connect': return 'crosshair';
           case 'card':
           case 'sticky':
-          case 'text': return 'copy';
+          case 'text':
+          case 'image': return 'copy';
           default: return 'default';
       }
   };
@@ -489,26 +518,35 @@ export function CanvasEditor() {
       
       {/* Toolbar */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-2 bg-[#0a0b10]/90 shadow-[0_0_15px_rgba(236,160,19,0.2)] rounded border border-[#eca013] backdrop-blur-md">
-         {['select', 'connect', 'card', 'sticky', 'text'].map(tool => (
+         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
+         {['select', 'connect', 'card', 'sticky', 'text', 'image'].map(tool => (
              <button 
                 key={tool}
                 className={`p-2 rounded transition-all tactile-btn ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10]" : "text-[#eca013] hover:bg-[#eca013]/10"}`}
-                onClick={(e) => { e.stopPropagation(); setActiveTool(tool as any); }}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (tool === 'image') {
+                        fileInputRef.current?.click();
+                    } else {
+                        setActiveTool(tool as any); 
+                    }
+                }}
              >
                  <span className="material-symbols-outlined">{{
                      select: 'near_me',
                      connect: 'hub',
                      card: 'crop_landscape',
                      sticky: 'sticky_note_2',
-                     text: 'text_fields'
-                 }[tool]}</span>
+                     text: 'text_fields',
+                     image: 'image'
+                 }[tool as string]}</span>
              </button>
          ))}
       </div>
 
        {/* Canvas */}
       <div ref={canvasRef} className="flex-1 relative overflow-hidden" 
-           onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+           onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { handleMouseUp(); setDragTargetId(null); setIsDragging(false); }}
            style={{ cursor: getCursor() }}>
            
         {/* Connections */}
@@ -521,7 +559,6 @@ export function CanvasEditor() {
           {activeCanvas.connections.map(conn => {
               const start = activeCanvas.elements.find(el => el.id === conn.from);
               const end = activeCanvas.elements.find(el => el.id === conn.to);
-              // Hide connection if either end is in a collapsed folder
               if(!start || !end) return null;
               if (start.parentId && collapsedFolders.has(start.parentId)) return null;
               if (end.parentId && collapsedFolders.has(end.parentId)) return null;
@@ -533,7 +570,6 @@ export function CanvasEditor() {
         </svg>
 
         {sortedElements.map(element => {
-            // Hide if parent is collapsed
             if (element.parentId && collapsedFolders.has(element.parentId)) return null;
 
             const pos = getElementPosition(element);
@@ -556,8 +592,6 @@ export function CanvasEditor() {
                                 </span>
                             </div>
                          )}
-
-                         {/* Visual Tab */}
                         <div className={`absolute -top-7 left-[-2px] h-7 px-3 bg-[#eca013]/10 border-t border-x border-[#eca013]/30 text-[#eca013] text-xs font-bold font-mono uppercase rounded-t-lg tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing backdrop-blur-md ${isSelected ? 'bg-[#eca013]/20 border-[#eca013]' : ''} ${activeTool === 'connect' ? '!cursor-crosshair' : ''}`}>
                              <div className="flex gap-1 mr-2 opacity-50">
                                 <div className="w-1 h-3 bg-[#eca013] rounded-full"></div>
@@ -572,9 +606,7 @@ export function CanvasEditor() {
                              <input 
                                 className="bg-transparent outline-none w-32 placeholder-[#eca013]/40 text-[#eca013] font-bold"
                                 value={folderData.title}
-                                onChange={e => {
-                                    handleFolderContentChange(element.id, e.target.value, folderData.collapsed);
-                                }}
+                                onChange={e => handleFolderContentChange(element.id, e.target.value, folderData.collapsed)}
                                 onClick={e => e.stopPropagation()}
                                 onMouseDown={e => e.stopPropagation()}
                             />
@@ -588,7 +620,7 @@ export function CanvasEditor() {
                     key={element.id}
                     className={`absolute rounded-lg shadow-lg backdrop-blur-sm transition-all select-none element-container flex flex-col
                         ${isSelected ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50" : "border border-[#eca013]/30 hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"}
-                        ${element.type === "card" ? "bg-[#0a0b10]/90" : ""}
+                        ${(element.type === "card" || element.type === "image") ? "bg-[#0a0b10]/90" : ""}
                         ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
                     `}
                     style={{
@@ -608,7 +640,7 @@ export function CanvasEditor() {
                      )}
 
                     <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
-                        ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}
+                        ${(element.type === 'card' || element.type === 'image') ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}
                         ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
                     `}>
                         <div className="flex gap-1">
@@ -618,7 +650,35 @@ export function CanvasEditor() {
                         </div>
                     </div>
 
-                    <div className="p-4 flex-1 flex flex-col">
+                    <div className="p-4 flex-1 flex flex-col overflow-hidden">
+                        {element.type === "image" && (() => {
+                             const imgData = parseImageContent(getElementContent(element));
+                             return (
+                                 <div className="flex flex-col gap-2 h-full">
+                                    <div className="flex-1 w-full min-h-0 relative rounded overflow-hidden border border-[#eca013]/20 bg-black/50">
+                                         {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={imgData.url} alt="Node" className="w-full h-full object-contain" draggable={false} />
+                                    </div>
+                                    <input
+                                        className="w-full bg-transparent font-bold text-sm outline-none text-[#eca013] border-b border-[#eca013]/20 pb-1 tracking-wide uppercase font-display placeholder-[#eca013]/30"
+                                        value={imgData.title}
+                                        onChange={(e) => handleContentChange(element.id, serializeImageContent(imgData.url, e.target.value, imgData.description))}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        placeholder="IMAGE_TITLE"
+                                    />
+                                    <input
+                                        className="w-full bg-transparent text-xs outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30"
+                                        value={imgData.description}
+                                        onChange={(e) => handleContentChange(element.id, serializeImageContent(imgData.url, imgData.title, e.target.value))}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        placeholder="Caption..."
+                                    />
+                                 </div>
+                             );
+                        })()}
+
                         {element.type === "card" && (() => {
                             const cardData = parseCardContent(getElementContent(element));
                             return (

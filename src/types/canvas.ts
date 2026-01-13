@@ -10,7 +10,7 @@ export interface DbCanvas {
 export interface DbElement {
   id: string;
   canvas_id: string;
-  type: ElementType;
+  type: CanvasElementType;
   x: number;
   y: number;
   width: number;
@@ -31,11 +31,12 @@ export interface DbConnection {
 }
 
 // Application types
-export type ElementType = "text" | "card" | "sticky" | "folder";
+export type CanvasElementType = 'card' | 'sticky' | 'text' | 'folder' | 'image';
+export type ElementType = CanvasElementType;
 
 export interface CanvasElement {
   id: string;
-  type: ElementType;
+  type: CanvasElementType;
   x: number;
   y: number;
   width: number;
