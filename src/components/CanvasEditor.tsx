@@ -137,23 +137,45 @@ export function CanvasEditor() {
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
     
-    // Auto-Connect Logic ([[Link]])
+    if (!activeCanvas) return;
+
+    // Helper to find target by name (Reusable)
+    const findTarget = (name: string) => {
+        return activeCanvas.elements.find(el => {
+             if (el.type === 'card' && el.content.startsWith(name + '||')) return true;
+             if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(name) || el.content === name)) return true;
+             if (el.type === 'folder') { try { const p = JSON.parse(el.content); return p.title === name; } catch(e){ return false; } }
+             if (el.type === 'image') { try { const p = JSON.parse(el.content); return p.title === name; } catch(e){ return false; } }
+             return false;
+        });
+    };
+
+    // 1. Detect Removed Links (Diff against Old Content)
+    const oldElement = activeCanvas.elements.find(el => el.id === elementId);
+    if (oldElement) {
+        const oldLinks = new Set(Array.from(oldElement.content.matchAll(/\[\[(.*?)\]\]/g)).map(m => m[1]));
+        const newLinks = new Set(Array.from(content.matchAll(/\[\[(.*?)\]\]/g)).map(m => m[1]));
+        
+        const removedNames = [...oldLinks].filter(x => !newLinks.has(x));
+        
+        removedNames.forEach(name => {
+            const target = findTarget(name);
+            if (target) {
+                // Delete connection if it exists
+                const conn = activeCanvas.connections.find(c => c.from === elementId && c.to === target.id);
+                if (conn) deleteConnection(conn.id);
+            }
+        });
+    }
+
+    // 2. Add New Links
     const matches = Array.from(content.matchAll(/\[\[(.*?)\]\]/g));
-    if (matches.length > 0 && activeCanvas) {
+    if (matches.length > 0) {
          matches.forEach(match => {
              const targetName = match[1];
-             const target = activeCanvas.elements.find(el => {
-                 // Check diverse content types
-                 if (el.type === 'card' && el.content.startsWith(targetName + '||')) return true;
-                 if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(targetName) || el.content === targetName)) return true;
-                 if (el.type === 'folder') { const p = JSON.parse(el.content); return p.title === targetName; }
-                 if (el.type === 'image') { const p = JSON.parse(el.content); return p.title === targetName; }
-                 return false;
-             });
+             const target = findTarget(targetName);
              
              if (target && target.id !== elementId) {
-                 // Check if connection exists? Context handles duplicate check usually, or we check here.
-                 // Context addConnection checks duplicates.
                  addConnection(elementId, target.id);
              }
          });
@@ -530,7 +552,13 @@ export function CanvasEditor() {
               setZoom(newZoom);
               setViewOffset(newOffset);
           } else {
-              // Pan
+              // PAN Logic
+              // Check if target is interactive (Textarea/Input)
+              // If so, allow default scroll (don't pan canvas)
+              const target = e.target as HTMLElement;
+              const isInteractive = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable;
+              if (isInteractive) return;
+
               setViewOffset(prev => ({
                   x: prev.x - e.deltaX,
                   y: prev.y - e.deltaY
