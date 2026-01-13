@@ -9,7 +9,7 @@ import { useSfx } from "@/hooks/useSfx";
 
 export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
-  const { playClick, playHover } = useSfx();
+  const { playClick, playHover, playPowerDown, speak } = useSfx();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
@@ -212,7 +212,12 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                     <div className="h-full bg-[#eca013] w-[48%]"></div>
                  </div>
                  <button 
-                    onClick={onShutdown}
+                    onClick={() => {
+                        playClick();
+                        playPowerDown();
+                        speak("Terminating Uplink");
+                        onShutdown();
+                    }}
                     className="w-full mt-3 flex items-center justify-center gap-2 text-[#eca013]/50 hover:text-red-500 hover:bg-red-500/10 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-wider"
                  >
                         <span className="material-symbols-outlined text-[14px]">power_settings_new</span>

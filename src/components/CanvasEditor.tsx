@@ -95,11 +95,11 @@ export function CanvasEditor() {
   useEffect(() => {
      // Boot Logic
      const timer = setTimeout(() => {
-        playBoot();
+        // playBoot(); // Moved to Login for smoother sequence
         speak("System Online");
-     }, 500);
+     }, 800); // Slight delay for fade in
      return () => clearTimeout(timer);
-  }, [playBoot, speak]);
+  }, [speak]);
 
   // Replaced dragOffset with explicit start refs for scaling support
   // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); 

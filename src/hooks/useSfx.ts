@@ -139,49 +139,76 @@ export const useSfx = () => {
         const ctx = audioCtx.current;
         const now = ctx.currentTime;
 
-        // Power Up Sweep
+        // Power Up Sweep (Matches 2.5s Loading)
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         const filter = ctx.createBiquadFilter();
 
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(50, now);
-        osc.frequency.exponentialRampToValueAtTime(1000, now + 1.5);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 2.5); // Slower rise
 
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(100, now);
-        filter.frequency.linearRampToValueAtTime(5000, now + 1.5);
+        filter.frequency.linearRampToValueAtTime(8000, now + 2.5);
 
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.2, now + 0.5);
-        gain.gain.linearRampToValueAtTime(0, now + 2.0);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
 
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start();
-        osc.stop(now + 2.0);
+        osc.stop(now + 2.6);
+    }, [initAudio]);
+
+    const playPowerDown = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 1.5);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(5000, now);
+        filter.frequency.linearRampToValueAtTime(100, now + 1.5);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 1.5);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(now + 1.6);
     }, [initAudio]);
 
     const speak = useCallback((text: string) => {
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            // Cancel any previous speech
             window.speechSynthesis.cancel();
-
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.volume = 0.5;
-            utterance.rate = 1.1; // Slightly faster
-            utterance.pitch = 0.1; // Deep robotic pitch
+            utterance.volume = 0.8;
+            utterance.rate = 0.9; // Slower, more deliberate
+            utterance.pitch = 0.01; // Lowest possible pitch for flat robot voice
             
-            // Try to find a good "system" voice
+            // Prefer "Microsoft Zira" or "Google US English"
             const voices = window.speechSynthesis.getVoices();
-            const systemVoice = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.name.includes('Microsoft Zira')) || voices[0];
+            const systemVoice = voices.find(v => v.name.includes('Zira')) || voices.find(v => v.name.includes('Google US English')) || voices[0];
             if (systemVoice) utterance.voice = systemVoice;
 
             window.speechSynthesis.speak(utterance);
         }
     }, []);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, speak };
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak };
 };

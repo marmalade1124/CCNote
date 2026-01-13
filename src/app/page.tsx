@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const router = useRouter();
-  const { playConfirm, playError } = useSfx();
+  const { playConfirm, playError, playBoot } = useSfx();
 
   // Hardcoded credentials
   const VALID_USERNAME = "razielrenz";
@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError("");
 
     if (email === VALID_USERNAME && password === VALID_PASSWORD) {
-       playConfirm();
+       playBoot(); // Play powerup sweep on success
        setIsTransitioning(true);
        // Delay navigation for animation
        setTimeout(() => {
