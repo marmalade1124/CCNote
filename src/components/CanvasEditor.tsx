@@ -79,6 +79,8 @@ export function CanvasEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [localPositions, setLocalPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
+  
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragElementRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null);
@@ -259,9 +261,29 @@ export function CanvasEditor() {
       ...prev,
       [dragElementRef.current!]: { x: newX, y: newY },
     }));
-  }, [isDragging, dragOffset, activeTool]);
+
+    // HIT TEST for Drop Zones
+    if (activeCanvas) {
+        const draggedEl = activeCanvas.elements.find(el => el.id === dragElementRef.current);
+        if (draggedEl) {
+             const currentRect = { x: newX, y: newY, width: draggedEl.width, height: draggedEl.height };
+             
+             // Simple hitbox interaction: Find any element we overlap that isn't us
+             const target = activeCanvas.elements.find(el => 
+                el.id !== draggedEl.id && 
+                isOverlapping(currentRect, el) &&
+                // Don't target own children in a weird recursive way (not possible with current logic but safe)
+                (draggedEl.type !== 'folder' || el.parentId !== draggedEl.id)
+            );
+            
+            setDragTargetId(target ? target.id : null);
+        }
+    }
+  }, [isDragging, dragOffset, activeTool, activeCanvas]);
 
   const handleMouseUp = useCallback(async () => {
+    setDragTargetId(null); // Clear highlight
+
     if (!isDragging || !dragElementRef.current || !activeCanvas) {
         setIsDragging(false);
         dragElementRef.current = null;
@@ -442,14 +464,6 @@ export function CanvasEditor() {
      return set;
   }, [activeCanvas, localContent]);
 
-  if (!activeCanvas) return <div className="flex-1 bg-[#0a0b10] flex items-center justify-center text-[#eca013]">Select Canvas...</div>;
-
-  const sortedElements = [...activeCanvas.elements].sort((a, b) => {
-      if (a.type === 'folder' && b.type !== 'folder') return -1;
-      if (a.type !== 'folder' && b.type === 'folder') return 1;
-      return 0; 
-  });
-
   const getCursor = () => {
       switch(activeTool) {
           case 'connect': return 'crosshair';
@@ -459,6 +473,14 @@ export function CanvasEditor() {
           default: return 'default';
       }
   };
+
+  if (!activeCanvas) return <div className="flex-1 bg-[#0a0b10] flex items-center justify-center text-[#eca013]">Select Canvas...</div>;
+
+  const sortedElements = [...activeCanvas.elements].sort((a, b) => {
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+      return 0; 
+  });
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden bg-[#0a0b10]" onKeyDown={handleKeyDown} tabIndex={0} onClick={handleCanvasClick}>
@@ -516,6 +538,7 @@ export function CanvasEditor() {
 
             const pos = getElementPosition(element);
             const isSelected = selectedElement === element.id;
+            const isDragTarget = dragTargetId === element.id;
             
             if (element.type === 'folder') {
                 const folderData = parseFolderContent(getElementContent(element));
@@ -526,6 +549,14 @@ export function CanvasEditor() {
                         style={{ left: pos.x, top: pos.y, width: element.width, height: element.height }}
                         onMouseDown={(e) => handleElementMouseDown(e, element)}
                     >
+                         {isDragTarget && (
+                            <div className="absolute -inset-4 border-2 border-[#39ff14] border-dashed rounded-xl z-50 pointer-events-none flex items-center justify-center bg-[#39ff14]/10 backdrop-blur-[1px] animate-pulse">
+                                <span className="bg-[#0a0b10] text-[#39ff14] px-3 py-1 rounded border border-[#39ff14] font-bold text-xs tracking-wider shadow-[0_0_15px_rgba(57,255,20,0.5)]">
+                                    📂 ADD TO GROUP
+                                </span>
+                            </div>
+                         )}
+
                          {/* Visual Tab */}
                         <div className={`absolute -top-7 left-[-2px] h-7 px-3 bg-[#eca013]/10 border-t border-x border-[#eca013]/30 text-[#eca013] text-xs font-bold font-mono uppercase rounded-t-lg tracking-wider flex items-center gap-2 drag-handle cursor-grab active:cursor-grabbing backdrop-blur-md ${isSelected ? 'bg-[#eca013]/20 border-[#eca013]' : ''} ${activeTool === 'connect' ? '!cursor-crosshair' : ''}`}>
                              <div className="flex gap-1 mr-2 opacity-50">
@@ -568,6 +599,14 @@ export function CanvasEditor() {
                     }}
                     onMouseDown={(e) => handleElementMouseDown(e, element)}
                 >
+                     {isDragTarget && (
+                        <div className="absolute -inset-4 border-2 border-[#39ff14] border-dashed rounded-xl z-50 pointer-events-none flex items-center justify-center bg-[#39ff14]/10 backdrop-blur-[1px] animate-pulse">
+                            <span className="bg-[#0a0b10] text-[#39ff14] px-3 py-1 rounded border border-[#39ff14] font-bold text-xs tracking-wider shadow-[0_0_15px_rgba(57,255,20,0.5)]">
+                                ✨ CREATE GROUP
+                            </span>
+                        </div>
+                     )}
+
                     <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
                         ${element.type === 'card' ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}
                         ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
