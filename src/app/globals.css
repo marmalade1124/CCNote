@@ -92,6 +92,7 @@ body {
   width: 100%;
   height: 20%;
   pointer-events: none;
+  z-index: 51;
 }
 
 .vignette {
@@ -156,6 +157,11 @@ body {
   animation: pulse-glow 2s infinite ease-in-out;
 }
 
+.animate-turn-on {
+  animation: turn-on-scale 0.5s ease-out forwards;
+  transform-origin: center;
+}
+
 @keyframes scanline {
   0% { bottom: 100%; }
   100% { bottom: -20%; }
@@ -192,6 +198,13 @@ body {
   0% { box-shadow: 0 0 50px rgba(236,160,19,0.1); border-color: rgba(236,160,19,0.3); }
   50% { box-shadow: 0 0 80px rgba(236,160,19,0.25); border-color: rgba(236,160,19,0.6); }
   100% { box-shadow: 0 0 50px rgba(236,160,19,0.1); border-color: rgba(236,160,19,0.3); }
+}
+
+@keyframes turn-on-scale {
+  0% { transform: scale(1, 0.002); opacity: 0; filter: brightness(3); }
+  40% { transform: scale(1, 0.002); opacity: 1; filter: brightness(3); }
+  70% { transform: scale(1, 1); opacity: 1; filter: brightness(1.5); }
+  100% { transform: scale(1, 1); opacity: 1; filter: brightness(1); }
 }
 
 /* Custom Scrollbar for Retro Feel */
