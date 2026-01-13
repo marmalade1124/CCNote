@@ -88,9 +88,19 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 
 export function CanvasEditor() {
   const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
-  const { playClick, playHover, playConfirm, playConnect, playTyping } = useSfx();
+  const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  
+  useEffect(() => {
+     // Boot Logic
+     const timer = setTimeout(() => {
+        playBoot();
+        speak("System Online");
+     }, 500);
+     return () => clearTimeout(timer);
+  }, [playBoot, speak]);
+
   // Replaced dragOffset with explicit start refs for scaling support
   // const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); 
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 }); // Pan State (T)

@@ -133,5 +133,55 @@ export const useSfx = () => {
         playTone(150, 'sawtooth', 0.2, 0.05);
     }, [playTone]);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError };
+    const playBoot = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+
+        // Power Up Sweep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(50, now);
+        osc.frequency.exponentialRampToValueAtTime(1000, now + 1.5);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(100, now);
+        filter.frequency.linearRampToValueAtTime(5000, now + 1.5);
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.5);
+        gain.gain.linearRampToValueAtTime(0, now + 2.0);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(now + 2.0);
+    }, [initAudio]);
+
+    const speak = useCallback((text: string) => {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            // Cancel any previous speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = 0.5;
+            utterance.rate = 1.1; // Slightly faster
+            utterance.pitch = 0.1; // Deep robotic pitch
+            
+            // Try to find a good "system" voice
+            const voices = window.speechSynthesis.getVoices();
+            const systemVoice = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.name.includes('Microsoft Zira')) || voices[0];
+            if (systemVoice) utterance.voice = systemVoice;
+
+            window.speechSynthesis.speak(utterance);
+        }
+    }, []);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, speak };
 };
