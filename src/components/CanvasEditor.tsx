@@ -1095,7 +1095,7 @@ export function CanvasEditor() {
                         return (
                             <div
                                 key={element.id}
-                                className={`absolute rounded-full transition-all flex items-center justify-center cursor-pointer shadow-[0_0_10px_rgba(236,160,19,0.3)]
+                                className={`absolute rounded-full transition-all flex items-center justify-center cursor-pointer shadow-[0_0_10px_rgba(236,160,19,0.3)] group
                                     ${isSelected ? 'bg-[#39ff14] shadow-[0_0_15px_#39ff14] z-50 scale-150' : 'bg-[#eca013] hover:scale-125 z-10'}
                                 `}
                                 style={{
@@ -1106,7 +1106,7 @@ export function CanvasEditor() {
                                 onMouseDown={(e) => handleElementMouseDown(e, element)}
                             >
                                 {/* Tooltip on hover */}
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#0a0b10] text-[#eca013] text-[10px] px-2 py-1 rounded border border-[#eca013]/30 opacity-0 hover:opacity-100 pointer-events-none whitespace-nowrap shadow-xl z-50 transition-opacity">
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#0a0b10] text-[#eca013] text-[10px] px-2 py-1 rounded border border-[#eca013]/30 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-xl z-50 transition-opacity">
                                     {element.type === 'card' ? parseCardContent(element.content).title || 'CARD' : element.type.toUpperCase()}
                                 </div>
                             </div>
