@@ -67,7 +67,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
             {/* Archives Toggle */}
             <button 
                 onClick={() => setIsArchivesOpen(!isArchivesOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
+                className={`archives-trigger flex items-center gap-2 px-3 py-1.5 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
                     isArchivesOpen 
                     ? "bg-[#eca013]/10 border-[#eca013] text-[#eca013] shadow-[0_0_15px_rgba(236,160,19,0.1)]" 
                     : "border-transparent text-[#eca013]/60 hover:text-[#eca013] hover:bg-[#eca013]/5"

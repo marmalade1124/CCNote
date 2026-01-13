@@ -559,7 +559,14 @@ export function CanvasEditor() {
         <div className="flex flex-col items-center z-10 animate-pulse">
             <span className="material-symbols-outlined text-6xl mb-4 opacity-50">satellite_alt</span>
             <h2 className="text-2xl font-bold tracking-[0.2em] mb-2">SYSTEM STANDBY</h2>
-            <p className="text-xs font-mono opacity-50 tracking-widest">ESTABLISH_UPLINK_TO_PROCEED</p>
+            <p className="text-xs font-mono opacity-50 tracking-widest mb-6">ESTABLISH_UPLINK_TO_PROCEED</p>
+            <button 
+                onClick={() => document.querySelector<HTMLButtonElement>('.archives-trigger')?.click()}
+                className="px-6 py-2 border border-[#eca013] text-[#eca013] hover:bg-[#eca013] hover:text-[#0a0b10] transition-colors rounded font-bold tracking-widest text-sm flex items-center gap-2"
+            >
+                <span className="material-symbols-outlined">folder_open</span>
+                ACCESS_ARCHIVES
+            </button>
         </div>
         <div className="scanlines"></div>
     </div>
@@ -581,33 +588,47 @@ export function CanvasEditor() {
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
       {/* Toolbar */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 p-2 bg-[#0a0b10]/90 shadow-[0_0_15px_rgba(236,160,19,0.2)] rounded border border-[#eca013] backdrop-blur-md">
-         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
-          {['select', 'pan', 'connect', 'card', 'sticky', 'text', 'image'].map(tool => (
-             <button 
-                key={tool}
-                title={tool.toUpperCase()}
-                className={`p-2 rounded transition-all tactile-btn ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10]" : "text-[#eca013] hover:bg-[#eca013]/10"}`}
-                onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (tool === 'image') {
-                        fileInputRef.current?.click();
-                    } else {
-                        setActiveTool(tool as any); 
-                    }
-                }}
-             >
-                 <span className="material-symbols-outlined">{{
-                     select: 'near_me',
-                     pan: 'hand_gesture',
-                     connect: 'hub',
-                     card: 'crop_landscape',
-                     sticky: 'sticky_note_2',
-                     text: 'text_fields',
-                     image: 'image'
-                 }[tool as string]}</span>
-             </button>
-         ))}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/90 shadow-[0_0_20px_rgba(236,160,19,0.3)] rounded-full border border-[#eca013] backdrop-blur-md">
+         
+         {/* Canvas Name Badge */}
+         <div className="pl-3 pr-2 border-r border-[#eca013]/30 flex items-center gap-2 opacity-80 cursor-default">
+            <span className="material-symbols-outlined text-sm">folder_open</span>
+            <span className="text-xs font-bold uppercase tracking-wider max-w-[100px] truncate">{activeCanvas.name}</span>
+         </div>
+
+         <div className="flex items-center gap-1">
+            <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
+            {['select', 'pan', 'connect', 'card', 'sticky', 'text', 'image'].map(tool => (
+                <button 
+                    key={tool}
+                    title={tool.toUpperCase()}
+                    className={`p-2 rounded-full transition-all tactile-btn relative group ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10"}`}
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (tool === 'image') {
+                            fileInputRef.current?.click();
+                        } else {
+                            setActiveTool(tool as any); 
+                        }
+                    }}
+                >
+                    <span className="material-symbols-outlined text-[20px]">{{
+                        select: 'near_me',
+                        pan: 'hand_gesture',
+                        connect: 'hub',
+                        card: 'crop_landscape',
+                        sticky: 'sticky_note_2',
+                        text: 'text_fields',
+                        image: 'image'
+                    }[tool as string]}</span>
+                    
+                    {/* Tooltip */}
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
+                        {tool.toUpperCase()}
+                    </span>
+                </button>
+            ))}
+         </div>
       </div>
 
        {/* Canvas Viewport */}
