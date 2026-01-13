@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useCanvas } from "@/context/CanvasContext";
 import { ProfileModal } from "./ProfileModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSfx } from "@/hooks/useSfx";
 
 export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
+  const { playClick, playHover } = useSfx();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
@@ -66,7 +68,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
 
             {/* Archives Toggle */}
             <button 
-                onClick={() => setIsArchivesOpen(!isArchivesOpen)}
+                onClick={() => { playClick(); setIsArchivesOpen(!isArchivesOpen); }}
+                onMouseEnter={playHover}
                 className={`archives-trigger flex items-center gap-2 px-3 py-1.5 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
                     isArchivesOpen 
                     ? "bg-[#eca013]/10 border-[#eca013] text-[#eca013] shadow-[0_0_15px_rgba(236,160,19,0.1)]" 

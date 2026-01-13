@@ -950,7 +950,7 @@ export function CanvasEditor() {
             <h2 className="text-2xl font-bold tracking-[0.2em] mb-2">SYSTEM STANDBY</h2>
             <p className="text-xs font-mono opacity-50 tracking-widest mb-6">ESTABLISH_UPLINK_TO_ENABLE_TOOLS</p>
             <button 
-                onClick={() => document.querySelector<HTMLButtonElement>('.archives-trigger')?.click()}
+                onClick={() => { playClick(); document.querySelector<HTMLButtonElement>('.archives-trigger')?.click(); }}
                 className="px-6 py-2 border border-[#eca013] text-[#eca013] hover:bg-[#eca013] hover:text-[#0a0b10] transition-colors rounded font-bold tracking-widest text-sm flex items-center gap-2"
             >
                 <span className="material-symbols-outlined">folder_open</span>

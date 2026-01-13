@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+import { useSfx } from "@/hooks/useSfx";
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -10,6 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const router = useRouter();
+  const { playConfirm, playError } = useSfx();
 
   // Hardcoded credentials
   const VALID_USERNAME = "razielrenz";
@@ -20,12 +23,14 @@ export default function LoginPage() {
     setError("");
 
     if (email === VALID_USERNAME && password === VALID_PASSWORD) {
+       playConfirm();
        setIsTransitioning(true);
        // Delay navigation for animation
        setTimeout(() => {
            router.push("/dashboard");
        }, 2500);
     } else {
+      playError();
       setError("ACCESS_DENIED: INVALID_CREDENTIALS");
     }
   };
