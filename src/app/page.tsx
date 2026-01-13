@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const router = useRouter();
 
   // Hardcoded credentials
@@ -19,7 +20,11 @@ export default function LoginPage() {
     setError("");
 
     if (email === VALID_USERNAME && password === VALID_PASSWORD) {
-      router.push("/dashboard");
+       setIsTransitioning(true);
+       // Delay navigation for animation
+       setTimeout(() => {
+           router.push("/dashboard");
+       }, 2500);
     } else {
       setError("ACCESS_DENIED: INVALID_CREDENTIALS");
     }
@@ -34,6 +39,27 @@ export default function LoginPage() {
       {/* Background Grid */}
       <div className="absolute inset-0 pointer-events-none retro-grid opacity-30"></div>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_90%)] z-0"></div>
+
+      {/* Transition Overlay */}
+      {isTransitioning && (
+           <div className="fixed inset-0 z-50 bg-[#0a0b10] flex flex-col items-center justify-center font-mono text-[#39ff14] text-sm animate-in fade-in duration-300">
+               <div className="max-w-[300px] w-full space-y-2">
+                   <p className="typing-line-1 overflow-hidden whitespace-nowrap border-r-2 border-[#39ff14] w-[0%] animate-[typing_0.5s_steps(20)_forwards] opacity-0 animate-[fade-in_0.1s_0s_forwards]">
+                       &gt; VALIDATING_CREDENTIALS... <span className="text-[#eca013]">OK</span>
+                   </p>
+                   <p className="typing-line-2 overflow-hidden whitespace-nowrap border-r-2 border-[#39ff14] w-[0%] animate-[typing_0.8s_steps(30)_0.6s_forwards] opacity-0 animate-[fade-in_0.1s_0.6s_forwards]">
+                       &gt; ESTABLISHING_UPLINK... <span className="text-[#eca013]">200ms</span>
+                   </p>
+                   <p className="typing-line-3 overflow-hidden whitespace-nowrap border-r-2 border-[#39ff14] w-[0%] animate-[typing_0.5s_steps(20)_1.5s_forwards] opacity-0 animate-[fade-in_0.1s_1.5s_forwards]">
+                        &gt; DECRYPTING_WORKSPACE... <span className="text-[#eca013]">DONE</span>
+                   </p>
+                    <p className="mt-4 text-center text-xl font-bold tracking-widest animate-[pulse_0.5s_ease-in-out_2s_infinite] opacity-0 animate-[fade-in_0.1s_2s_forwards]">
+                        ACCESS_GRANTED
+                    </p>
+               </div>
+               <div className="absolute bottom-0 left-0 w-full h-1 bg-[#39ff14] animate-[width-load_2.5s_ease-in-out_forwards]"></div>
+           </div>
+      )}
 
       {/* Top Navigation */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-[#eca013]/20 px-6 py-3 bg-[#0a0b10]/80 backdrop-blur z-20 relative">
@@ -52,7 +78,7 @@ export default function LoginPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 z-10 relative">
+      <main className={`flex-1 flex flex-col items-center justify-center px-4 py-12 z-10 relative transition-opacity duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="w-full max-w-[440px] bg-[#0a0b10]/80 p-8 md:p-10 rounded shadow-[0_0_50px_rgba(236,160,19,0.1)] border border-[#eca013]/30 backdrop-blur-md relative overflow-hidden pulse-border">
             {/* Corner Markers */}
             <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#eca013]"></div>
@@ -133,8 +159,9 @@ export default function LoginPage() {
             <button
               className="w-full flex cursor-pointer items-center justify-center rounded h-12 bg-[#eca013] text-[#0a0b10] text-sm font-bold tracking-[0.1em] mt-8 hover:bg-[#eca013] hover:shadow-[0_0_20px_rgba(236,160,19,0.6)] tactile-btn transition-all uppercase transform hover:-translate-y-0.5 active:translate-y-0.5"
               type="submit"
+              disabled={isTransitioning}
             >
-              Init_Session
+              {isTransitioning ? "INITIALIZING..." : "Init_Session"}
             </button>
           </form>
         </div>
@@ -146,6 +173,13 @@ export default function LoginPage() {
           Sys_Admin: marmalade1124 // Term_v1.0.4
         </p>
       </footer>
+      
+      <style jsx>{`
+        @keyframes width-load {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+      `}</style>
     </div>
   );
 }
