@@ -1,7 +1,7 @@
 "use client";
 
 import { CanvasProvider } from "@/context/CanvasContext";
-import { Sidebar } from "@/components/Sidebar";
+import { SystemBar } from "@/components/SystemBar";
 import { CanvasEditor } from "@/components/CanvasEditor";
 
 export default function DashboardPage() {
@@ -14,9 +14,11 @@ export default function DashboardPage() {
         <div className="crt-overlay-anim"></div>
         <div className="vignette"></div>
 
+        {/* Top-Mounted HUD (SystemBar) */}
+        <SystemBar />
+
         {/* Flickering Terminal Turn-On Container */}
-        <div className="flex h-screen w-full animate-turn-on">
-          <Sidebar />
+        <div className="pt-14 h-screen w-full animate-turn-on relative z-0">
           <CanvasEditor />
         </div>
         
