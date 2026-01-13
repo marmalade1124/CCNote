@@ -5,6 +5,8 @@ import { useCanvas } from "@/context/CanvasContext";
 import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Radar } from "./Radar";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const STICKY_COLORS = [
   "#eca01340", "#39ff1440", "#00f0ff40", "#ff003c40", "#b026ff40",
@@ -144,6 +146,29 @@ export function CanvasEditor() {
       const content = serializeFolderContent(newTitle, currentCollapsed);
       handleContentChange(elementId, content);
   };
+
+  // Search Navigation Listener
+  useEffect(() => {
+      const handlePanTo = (e: Event) => {
+          const detail = (e as CustomEvent).detail;
+          if (canvasRef.current) {
+               const rect = canvasRef.current.getBoundingClientRect();
+               const targetZoom = detail.zoom || 1;
+               setZoom(targetZoom);
+               
+               // Center the target coordinate
+               // ScreenCenter = (World * Zoom) + Offset
+               // Offset = ScreenCenter - (World * Zoom)
+               const newOffset = {
+                   x: (rect.width / 2) - (detail.x * targetZoom),
+                   y: (rect.height / 2) - (detail.y * targetZoom)
+               };
+               setViewOffset(newOffset);
+          }
+      };
+      window.addEventListener('canvas:pan-to', handlePanTo);
+      return () => window.removeEventListener('canvas:pan-to', handlePanTo);
+  }, []);
 
   const getElementContent = (element: CanvasElement) => {
     return localContent[element.id] ?? element.content;
@@ -839,34 +864,74 @@ export function CanvasEditor() {
                                         onMouseDown={(e) => e.stopPropagation()}
                                         placeholder="HEADER_TEXT"
                                         />
-                                        <textarea
-                                        className="w-full flex-1 bg-transparent text-xs resize-none outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30 leading-relaxed"
-                                        value={cardData.description}
-                                        onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        placeholder="Input data stream..."
-                                        />
+                                        {isSelected ? (
+                                            <textarea
+                                                className="w-full flex-1 bg-transparent text-xs resize-none outline-none text-[#eca013]/80 font-mono tracking-tight placeholder-[#eca013]/30 leading-relaxed"
+                                                value={cardData.description}
+                                                onChange={(e) => handleContentChange(element.id, serializeCardContent(cardData.title, e.target.value))}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                placeholder="Input data stream..."
+                                            />
+                                        ) : (
+                                            <div className="w-full flex-1 text-xs text-[#eca013]/80 font-mono leading-relaxed overflow-hidden markdown-preview">
+                                                <ReactMarkdown 
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={{
+                                                        h1: ({node, ...props}) => <h1 className="text-sm font-bold border-b border-[#eca013]/20 pb-1 mb-2 mt-1" {...props} />,
+                                                        h2: ({node, ...props}) => <h2 className="text-xs font-bold mb-1 mt-2" {...props} />,
+                                                        ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                                                        ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                                                        li: ({node, ...props}) => <li className="mb-0.5" {...props} />,
+                                                        code: ({node, ...props}) => <code className="bg-[#eca013]/10 px-1 rounded text-[#eca013]" {...props} />,
+                                                        blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-[#eca013]/50 pl-2 italic my-2 opacity-80" {...props} />,
+                                                    }}
+                                                >
+                                                    {cardData.description || "_No Data_"}
+                                                </ReactMarkdown>
+                                            </div>
+                                        )}
                                     </div>
                                     );
                                 })()}
                                 {element.type === "sticky" && (
-                                    <textarea
-                                    className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-[#eca013] font-mono placeholder-[#eca013]/40"
-                                    value={getElementContent(element)}
-                                    onChange={(e) => handleContentChange(element.id, e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    isSelected ? (
+                                        <textarea
+                                            className="w-full h-full bg-transparent text-sm font-medium resize-none outline-none text-[#eca013] font-mono placeholder-[#eca013]/40"
+                                            value={getElementContent(element)}
+                                            onChange={(e) => handleContentChange(element.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full text-sm font-medium text-[#eca013] font-mono overflow-hidden markdown-preview">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{getElementContent(element)}</ReactMarkdown>
+                                        </div>
+                                    )
                                 )}
                                 {element.type === "text" && (
-                                    <textarea
-                                    className="w-full bg-transparent text-base resize-none outline-none text-[#eca013] font-mono phosphor-glow placeholder-[#eca013]/30"
-                                    value={getElementContent(element)}
-                                    onChange={(e) => handleContentChange(element.id, e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    isSelected ? (
+                                        <textarea
+                                            className="w-full h-full bg-transparent text-base resize-none outline-none text-[#eca013] font-mono phosphor-glow placeholder-[#eca013]/30"
+                                            value={getElementContent(element)}
+                                            onChange={(e) => handleContentChange(element.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full text-base text-[#eca013] font-mono phosphor-glow overflow-hidden markdown-preview">
+                                             <ReactMarkdown 
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    h1: ({node, ...props}) => <h1 className="text-xl font-bold border-b border-[#eca013]/30 pb-2 mb-2" {...props} />,
+                                                    ul: ({node, ...props}) => <ul className="list-disc pl-5" {...props} />,
+                                                    li: ({node, ...props}) => <li className="mb-1" {...props} />
+                                                }}
+                                             >
+                                                {getElementContent(element)}
+                                             </ReactMarkdown>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </div>

@@ -27,8 +27,6 @@ export function CommandPalette({ onLogout }: CommandPaletteProps) {
   // Command Definitions
   const commands: Command[] = useMemo(() => [
     { id: "tool-select", label: "Select Tool", icon: "near_me", category: "tool", action: () => setActiveTool("select"), shortcut: "V" },
-    { id: "tool-card", label: "Create Card", icon: "crop_landscape", category: "tool", action: () => setActiveTool("card"), shortcut: "C" },
-    { id: "tool-sticky", label: "Sticky Note", icon: "sticky_note_2", category: "tool", action: () => setActiveTool("sticky"), shortcut: "S" },
     { id: "tool-text", label: "Text Node", icon: "text_fields", category: "tool", action: () => setActiveTool("text"), shortcut: "T" },
     { id: "tool-connect", label: "Connect Nodes", icon: "hub", category: "tool", action: () => setActiveTool("connect"), shortcut: "L" },
     { id: "tool-image", label: "Upload Image", icon: "image", category: "tool", action: () => setActiveTool("image"), shortcut: "I" },
@@ -36,13 +34,86 @@ export function CommandPalette({ onLogout }: CommandPaletteProps) {
     { id: "sys-logout", label: "Terminate Session", icon: "power_settings_new", category: "system", action: () => onLogout() },
   ], [setActiveTool, refreshCanvases, onLogout]);
 
-  // Filter Logic
+  const { canvases, activeCanvasId, setActiveCanvas } = useCanvas();
+
+  // Content Search Logic
+  const allCommands = useMemo(() => {
+      let combined = [...commands];
+
+      if (query.trim().length > 1) { // Only search if typed > 1 char
+        canvases.forEach(canvas => {
+            canvas.elements.forEach(el => {
+                let text = "";
+                let typeLabel = "NODE";
+                
+                // Extract Text
+                if (el.type === 'text' || el.type === 'sticky') text = el.content;
+                else if (el.type === 'card') {
+                    const parts = el.content.split("||");
+                    text = `${parts[0]} ${parts[1]}`;
+                    typeLabel = "CARD";
+                }
+                else if (el.type === 'folder') {
+                     // Parse folder
+                     try { const p = JSON.parse(el.content); text = p.title; } catch(e) { text = "Group"; }
+                     typeLabel = "GROUP";
+                }
+
+                if (text.toLowerCase().includes(query.toLowerCase())) {
+                     combined.push({
+                         id: `search-${el.id}`,
+                         label: `${text.substring(0, 30)}${text.length>30?'...':''} (${typeLabel})`,
+                         icon: el.type === 'card' ? 'crop_landscape' : el.type === 'sticky' ? 'sticky_note_2' : 'description',
+                         category: 'action',
+                         action: () => {
+                             if (canvas.id !== activeCanvasId) {
+                                 setActiveCanvas(canvas.id);
+                                 setTimeout(() => window.dispatchEvent(new CustomEvent('canvas:pan-to', { detail: { x: el.x + el.width/2, y: el.y + el.height/2, zoom: 1 } })), 500); // Increased delay
+                             } else {
+                                window.dispatchEvent(new CustomEvent('canvas:pan-to', { detail: { x: el.x + el.width/2, y: el.y + el.height/2, zoom: 1 } }));
+                             }
+                         }
+                     });
+                }
+            });
+        });
+      }
+      return combined;
+  }, [commands, query, canvases, activeCanvasId, setActiveCanvas]);
+
+  // Filter Logic (Search matches are already filtered in allCommands, but we might filter Tool commands too)
+  // Actually, allCommands already includes Search Results based on Query.
+  // But Tool Commands are NOT filtered by query inside allCommands logic yet (only appended).
+  // So we need to filter "Fixed Commands" vs "Dynamic Commands".
+  // Simplified: Let allCommands handle filtering?
+  // Current logic: combined = [...commands]. If query, append Search Results.
+  // BUT we still need to filter 'commands' based on query (e.g. typing "Card" should show "Create Card").
+  
   const filteredCommands = useMemo(() => {
-    if (!query) return commands;
-    return commands.filter(cmd => 
-      cmd.label.toLowerCase().includes(query.toLowerCase())
+    if (!query) return commands; // Show default tools if no query
+    
+    // Filter Fixed Commands
+    const fixedMatches = commands.filter(cmd => cmd.label.toLowerCase().includes(query.toLowerCase()));
+    
+    // Search Results (which are already in allCommands? No, logic above appended them conditionally)
+    // Wait, my previous logic REBUILDS allCommands based on query.
+    // So allCommands contains: [All Fixed Commands] + [Search Matches].
+    // I need to filter the Fixed Commands portion?
+    
+    // Let's refine the allCommands logic in previous step.
+    // Previous step: combined = [...commands]. If query > 1, push matches.
+    // So 'combined' has: [Tool A, Tool B...] + [Match 1, Match 2...].
+    // If I return 'combined', I show Tools (unfiltered) + Matches.
+    // This is noisy.
+    
+    // Correct logic:
+    // If query exists, 'filtered' = (Commands filtered by query) + (Search Results).
+    
+    return allCommands.filter(cmd => 
+        cmd.category === 'action' ? true : // Search results (category action) are already matched
+        cmd.label.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query, commands]);
+  }, [query, commands, allCommands]);
 
   // Keyboard Listeners
   useEffect(() => {
