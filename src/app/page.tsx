@@ -31,7 +31,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-[#0a0b10] min-h-screen flex flex-col font-display text-[#eca013] overflow-hidden relative selection:bg-[#eca013] selection:text-[#0a0b10]">
+    <div className="bg-[#0a0b10] min-h-screen flex flex-col font-display text-[#eca013] overflow-hidden relative selection:bg-[#eca013] selection:text-[#0a0b10] animate-turn-on">
       {/* CRT Scanline Overlay */}
       <div className="scanlines"></div>
       <div className="crt-overlay-anim"></div>
