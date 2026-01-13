@@ -103,7 +103,7 @@ export function CanvasEditor() {
   useEffect(() => { viewOffsetRef.current = viewOffset; }, [viewOffset]);
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null);
   const dragElementRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null); // Element Original World Pos
   const dragStartMouseRef = useRef<{x: number, y: number} | null>(null); // Mouse Original Screen Pos
@@ -113,9 +113,9 @@ export function CanvasEditor() {
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasEl) return;
     const updateSize = () => {
-        const rect = canvasRef.current?.getBoundingClientRect();
+        const rect = canvasEl.getBoundingClientRect();
         if (rect) setViewportSize({ width: rect.width, height: rect.height });
     };
     
@@ -126,9 +126,9 @@ export function CanvasEditor() {
        updateSize();
     });
     
-    resizeObserver.observe(canvasRef.current);
+    resizeObserver.observe(canvasEl);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [canvasEl]);
 
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
 
@@ -291,8 +291,8 @@ export function CanvasEditor() {
      // ... (existing listener)
      const handlePanTo = (e: Event) => {
           const detail = (e as CustomEvent).detail;
-          if (canvasRef.current) {
-               const rect = canvasRef.current.getBoundingClientRect();
+          if (canvasEl) {
+               const rect = canvasEl.getBoundingClientRect();
                const targetZoom = detail.zoom || 1;
                setZoom(targetZoom);
                
@@ -324,7 +324,7 @@ export function CanvasEditor() {
       reader.onload = async (event) => {
           const result = event.target?.result as string;
           if (result && activeCanvas) {
-              const rect = canvasRef.current!.getBoundingClientRect();
+              const rect = canvasEl!.getBoundingClientRect();
               // Center logic with Zoom: WorldCenter = (ScreenCenter - Offset) / Zoom
               const screenCenterX = rect.width / 2;
               const screenCenterY = rect.height / 2;
@@ -436,7 +436,7 @@ export function CanvasEditor() {
     }
     
     // Zoom/Pan Aware Coordinate Calculation
-    const rect = canvasRef.current!.getBoundingClientRect();
+    const rect = canvasEl!.getBoundingClientRect();
     const x = (e.clientX - rect.left - viewOffset.x) / zoom;
     const y = (e.clientY - rect.top - viewOffset.y) / zoom;
 
@@ -513,7 +513,7 @@ export function CanvasEditor() {
               const currentZoom = zoomRef.current;
               const currentOffset = viewOffsetRef.current;
 
-              const rect = canvasRef.current!.getBoundingClientRect();
+              const rect = canvasEl!.getBoundingClientRect();
               const mouseX = e.clientX - rect.left;
               const mouseY = e.clientY - rect.top;
 
@@ -538,17 +538,17 @@ export function CanvasEditor() {
           }
       };
 
-      const canvasEl = canvasRef.current;
-      if (canvasEl) {
-          canvasEl.addEventListener('wheel', handleWheelNative, { passive: false });
+      const canvasElLocal = canvasEl;
+      if (canvasElLocal) {
+          canvasElLocal.addEventListener('wheel', handleWheelNative, { passive: false });
       }
 
       return () => {
-          if (canvasEl) {
-              canvasEl.removeEventListener('wheel', handleWheelNative);
+          if (canvasElLocal) {
+              canvasElLocal.removeEventListener('wheel', handleWheelNative);
           }
       };
-  }, []); // Empty deps because we use refs
+  }, [canvasEl]); // Depend on canvasEl
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Check if handling Pan (either via Tool or Middle Click)
@@ -873,7 +873,7 @@ export function CanvasEditor() {
       </div>
 
        {/* Canvas Viewport */}
-      <div ref={canvasRef} className="flex-1 relative overflow-hidden w-full h-full" 
+      <div ref={setCanvasEl} className="flex-1 relative overflow-hidden w-full h-full" 
            onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { handleMouseUp(); setDragTargetId(null); setIsDragging(false); }}
            onClick={handleCanvasClick}
            style={{ cursor: getCursor() }}>
