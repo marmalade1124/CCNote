@@ -129,5 +129,9 @@ export const useSfx = () => {
          osc2.stop(now + 0.1);
     }, [initAudio]);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping };
+    const playError = useCallback(() => {
+        playTone(150, 'sawtooth', 0.2, 0.05);
+    }, [playTone]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError };
 };
