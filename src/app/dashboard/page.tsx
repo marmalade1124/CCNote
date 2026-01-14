@@ -6,6 +6,7 @@ import { CanvasProvider } from "@/context/CanvasContext";
 import { SystemBar } from "@/components/SystemBar";
 import { CanvasEditor } from "@/components/CanvasEditor";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NeuralInterface } from "@/components/NeuralInterface";
 
 export default function DashboardPage() {
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -35,6 +36,9 @@ export default function DashboardPage() {
         <div className="pt-14 h-screen w-full animate-turn-on relative z-0 flex flex-col">
           <CanvasEditor />
         </div>
+        
+        {/* AI Assistant Overlay */}
+        <NeuralInterface />
         
       </div>
     </CanvasProvider>
