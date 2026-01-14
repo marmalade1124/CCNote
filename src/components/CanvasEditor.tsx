@@ -1460,6 +1460,7 @@ export function CanvasEditor() {
                                                             if (props.type === "checkbox") {
                                                                 return (
                                                                     <input 
+                                                                        {...props} 
                                                                         type="checkbox" 
                                                                         checked={checked} 
                                                                         onChange={() => {}} 
@@ -1470,10 +1471,9 @@ export function CanvasEditor() {
                                                                             }
                                                                         }}
                                                                         onMouseDown={(e) => e.stopPropagation()}
-                                                                        className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer z-50 relative"
-                                                                        disabled={false} // Force enable
+                                                                        className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer z-50 relative pointer-events-auto"
+                                                                        disabled={false} // Force enable OVERRIDE
                                                                         readOnly={false}
-                                                                        {...props} 
                                                                     />
                                                                 );
                                                             }
