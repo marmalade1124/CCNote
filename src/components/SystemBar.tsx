@@ -265,7 +265,12 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
         onNameChange={setDisplayName}
       />
       
-      {isTimerOpen && <PomodoroTimer onClose={() => setIsTimerOpen(false)} />}
+      {isTimerOpen && (
+          <PomodoroTimer 
+              onClose={() => setIsTimerOpen(false)} 
+              onComplete={() => setIsGameOpen(false)} 
+          />
+      )}
       {isGameOpen && <TypingDefenseGame onClose={() => setIsGameOpen(false)} />}
     </>
   );

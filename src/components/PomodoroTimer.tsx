@@ -10,7 +10,7 @@ const MODES = {
   LONG: { label: "LONG_BRK", time: 15 * 60 },
 };
 
-export function PomodoroTimer({ onClose }: { onClose: () => void }) {
+export function PomodoroTimer({ onClose, onComplete }: { onClose: () => void; onComplete?: () => void }) {
   const [timeLeft, setTimeLeft] = useState(MODES.FOCUS.time);
   const [totalDuration, setTotalDuration] = useState(MODES.FOCUS.time); // Store initial duration for progress calculation
   const [isActive, setIsActive] = useState(false);
@@ -69,19 +69,20 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
       // Timer Finished
       playPowerDown(); // Play finish sound
       setIsActive(false);
+      if (onComplete) onComplete(); // Trigger external complete handler
       if (timerRef.current) clearInterval(timerRef.current);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, timeLeft, playPowerDown]);
+  }, [isActive, timeLeft, playPowerDown, onComplete]);
 
   // Progress Calculation based on Total Duration
   const progressPercent = (timeLeft / totalDuration) * 100;
 
   return (
-    <div className="fixed top-20 right-6 z-50 w-72 bg-[#0a0b10]/95 border border-[#eca013]/30 shadow-[0_0_30px_rgba(236,160,19,0.15)] rounded-lg backdrop-blur-md p-6 animate-in fade-in slide-in-from-right duration-300 font-mono">
+    <div className="fixed top-20 right-6 z-[110] w-72 bg-[#0a0b10]/95 border border-[#eca013]/30 shadow-[0_0_30px_rgba(236,160,19,0.15)] rounded-lg backdrop-blur-md p-6 animate-in fade-in slide-in-from-right duration-300 font-mono">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 border-b border-[#eca013]/20 pb-2">
         <div className="flex items-center gap-2 text-[#eca013]">
