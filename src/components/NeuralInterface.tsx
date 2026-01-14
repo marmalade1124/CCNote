@@ -9,7 +9,7 @@ import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
   const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
-  const { playClick, playConfirm, speak, playRobotBeep } = useSfx();
+  const { playClick, playConfirm, speak, playRobotBeep, playGiggle } = useSfx();
 
   const { messages, sendMessage, isLoading, addToolResult, error } = (useChat as any)({
     body: {
@@ -390,6 +390,7 @@ export function NeuralInterface() {
         onClick={() => setIsOpen(!isOpen)}
         onMotivate={(msg) => speak(msg)}
         onBeep={playRobotBeep}
+        onGiggle={playGiggle}
         position={robotPosition}
         onPositionChange={setRobotPosition}
       />

@@ -358,5 +358,37 @@ export const useSfx = () => {
         osc.stop(now + duration);
     }, [initAudio]);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playUngroup, playTrash, playRobotBeep };
+    // Cute giggle sound - rapid ascending chirps
+    const playGiggle = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        
+        // Play 4-6 rapid ascending chirps
+        const chirpCount = 4 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < chirpCount; i++) {
+            const delay = i * 0.08;
+            const now = ctx.currentTime + delay;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            // Ascending frequency for giggle effect
+            const baseFreq = 800 + i * 150;
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(baseFreq, now);
+            osc.frequency.linearRampToValueAtTime(baseFreq + 200, now + 0.06);
+            
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.07);
+        }
+    }, [initAudio]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playUngroup, playTrash, playRobotBeep, playGiggle };
 };

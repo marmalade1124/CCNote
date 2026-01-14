@@ -12,11 +12,13 @@ interface EmoRobotProps {
   onBeep?: () => void;
   position: { x: number; y: number };
   onPositionChange: (pos: { x: number; y: number }) => void;
+  onGiggle?: () => void;
 }
 
-type EmoExpression = 'idle' | 'happy' | 'thinking' | 'listening' | 'wink' | 'sleepy' | 'sad';
+type EmoExpression = 'idle' | 'happy' | 'thinking' | 'listening' | 'wink' | 'sleepy' | 'sad' | 'giggle';
 
 const MOTIVATIONAL_MESSAGES = [
+  // Encouraging
   "You're doing great! 🚀",
   "Keep up the awesome work!",
   "Ideas are flowing today!",
@@ -27,13 +29,55 @@ const MOTIVATIONAL_MESSAGES = [
   "Amazing progress!",
   "Keep building! 💪",
   "Your ideas matter!",
+  // Cute & Playful
+  "Beep boop! 🤖",
+  "I believe in you!",
+  "You're my favorite human!",
+  "*happy robot noises*",
+  "Let's create magic! ✨",
+  "Yay teamwork! 🎉",
+  "Brain power activated!",
+  "Ready when you are!",
+  "Let's gooo! 🚀",
+  "I love your ideas!",
+  // Supportive
+  "Take a break if needed!",
+  "You've got this!",
+  "One step at a time!",
+  "Remember to hydrate! 💧",
+  "Breathe... you're doing fine!",
+  "Progress, not perfection!",
+  "Every idea counts!",
+  "Small wins add up!",
+  "Trust the process!",
+  "Magic takes time! ⏳",
+  // Excited
+  "Ooh, what are we making?",
+  "This is exciting!",
+  "I'm helping! ...I think",
+  "Canvas vibes! 🎨",
+  "Creativity mode: ON",
+  "Big brain time! 🧠",
+  "Idea incoming...",
+  "Something cool brewing!",
+  "We got this together!",
+  "Dream big! ⭐",
+  // Random cute
+  "Bloop! 💚",
+  "*wiggles excitedly*",
+  "Hehe! 😊",
+  "Focus mode! 🎯",
+  "You make me happy!",
+  "Best team ever!",
 ];
 
-export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, onBeep, position, onPositionChange }: EmoRobotProps) {
+export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, onBeep, position, onPositionChange, onGiggle }: EmoRobotProps) {
   const [expression, setExpression] = useState<EmoExpression>('idle');
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
   const robotRef = useRef<HTMLDivElement>(null);
+  const hoverCountRef = useRef(0);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determine expression based on state
   useEffect(() => {
@@ -94,31 +138,54 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
     const interval = setInterval(() => {
       const rand = Math.random();
       
-      // Random beep (30% chance every 5 seconds)
-      if (rand < 0.3) {
+      // Random beep (40% chance every 3 seconds)
+      if (rand < 0.4) {
         onBeep?.();
       }
       
-      // Random expression
-      if (rand < 0.1) {
+      // Random expression (20% chance)
+      if (rand < 0.15) {
         setExpression('wink');
         setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 300);
-      } else if (rand < 0.15) {
+      } else if (rand < 0.2) {
         setExpression('sleepy');
         setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 200);
       }
       
-      // Random motivational message (5% chance every 5 seconds)
-      if (rand < 0.05 && !speechBubble) {
+      // Random motivational message (20% chance every 3 seconds)
+      if (rand < 0.2 && !speechBubble) {
         const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
         setSpeechBubble(msg);
         onMotivate?.(msg);
         setTimeout(() => setSpeechBubble(null), 4000);
       }
-    }, 5000); // Every 5 seconds
+    }, 3000); // Every 3 seconds
     
     return () => clearInterval(interval);
   }, [isListening, isLoading, isOpen, speechBubble, onMotivate, onBeep]);
+
+  // Handle rapid hover for giggle
+  const handleMouseEnter = () => {
+    hoverCountRef.current += 1;
+    
+    // Clear existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    
+    // If 4+ hovers in quick succession, giggle!
+    if (hoverCountRef.current >= 4) {
+      setExpression('giggle');
+      onGiggle?.();
+      hoverCountRef.current = 0;
+      setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 500);
+    }
+    
+    // Reset hover count after 1.5 seconds of no hovering
+    hoverTimeoutRef.current = setTimeout(() => {
+      hoverCountRef.current = 0;
+    }, 1500);
+  };
 
   // Eye styles based on expression
   const getEyeStyle = (isLeft: boolean) => {
@@ -137,8 +204,10 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         return { ...base, height: '5px', transform: 'translateY(6px)' };
       case 'sad':
         return { ...base, transform: 'rotate(10deg) translateY(2px)' };
+      case 'giggle':
+        return { ...base, transform: 'scaleX(1.2) scaleY(0.8)' };
       default:
-        return base;
+        return { ...base, transform: '' };
     }
   };
 
@@ -178,6 +247,7 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
 
       <motion.button
         onClick={onClick}
+        onMouseEnter={handleMouseEnter}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         animate={{
