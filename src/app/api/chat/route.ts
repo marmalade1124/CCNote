@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
 
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     console.log("Last message:", messages[messages.length - 1]);
 
     const result = await streamText({
-    model: openai('gpt-4o'),
+    model: google('gemini-1.5-flash'),
     messages: messages.map((m: any) => ({
         role: m.role,
         content: m.content,
