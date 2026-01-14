@@ -9,6 +9,7 @@ import { Radar } from "./Radar";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
+import { supabase } from "@/lib/supabase";
 
 const STICKY_COLORS = [
   "#eca01340", "#39ff1440", "#00f0ff40", "#ff003c40", "#b026ff40",
