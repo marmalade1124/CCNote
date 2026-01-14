@@ -5,9 +5,12 @@ import { z } from 'zod';
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  try {
+    const { messages } = await req.json();
+    console.log("API /api/chat received messages:", messages.length);
+    console.log("Last message:", messages[messages.length - 1]);
 
-  const result = await streamText({
+    const result = await streamText({
     model: openai('gpt-4o'),
     messages: messages.map((m: any) => ({
         role: m.role,
@@ -51,5 +54,9 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toTextStreamResponse();
+    return result.toTextStreamResponse();
+  } catch (error) {
+    console.error("API /api/chat Error:", error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error', details: error }), { status: 500 });
+  }
 }
