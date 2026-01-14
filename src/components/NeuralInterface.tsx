@@ -95,6 +95,19 @@ export function NeuralInterface() {
     }
   }, [sendMessage, playConfirm]);
 
+  // TTS and Auto-scroll
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    
+    // Speak latest assistant message
+    const latest = messages[messages.length - 1];
+    if (latest && latest.role === 'assistant') {
+        speak((latest as any).content);
+    }
+  }, [messages, speak]);
+
   const toggleListening = () => {
       if (!recognitionRef.current) return;
       if (isListening) {
@@ -117,17 +130,33 @@ export function NeuralInterface() {
                 exit={{ x: 300, opacity: 0 }}
                 className="fixed bottom-20 right-6 w-80 z-[120] font-mono"
             >
-                {/* Chat Bubble */}
-                {latestMessage && latestMessage.role === 'assistant' && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-4 bg-[#0a0b10] border border-[#eca013]/50 p-3 rounded-lg shadow-[0_0_15px_rgba(236,160,19,0.2)] text-[#eca013] text-xs relative max-h-40 overflow-y-auto custom-scrollbar"
-                    >
-                        {(latestMessage as any).content}
-                        <div className="absolute bottom-0 right-2 text-[8px] opacity-50">AI_CORE_V.2</div>
-                    </motion.div>
-                )}
+                {/* Chat History Panel */}
+                <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
+                    {messages.length === 0 && (
+                        <div className="text-[#39ff14]/30 text-[10px] text-center mt-20 font-mono">
+                            // NO_DATA_STREAM<br/>
+                            // WAITING_FOR_INPUT...
+                        </div>
+                    )}
+                    {messages.map((m, i) => (
+                        <motion.div 
+                            key={i}
+                            initial={{ opacity: 0, x: m.role === 'user' ? 10 : -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`p-2 rounded max-w-[90%] text-xs relative ${
+                                m.role === 'user' 
+                                ? 'self-end bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/20' 
+                                : 'self-start bg-[#eca013]/10 text-[#eca013] border border-[#eca013]/20'
+                            }`}
+                        >
+                            {(m as any).content}
+                            <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
+                                {m.role === 'user' ? 'USER_CMD' : 'AI_CORE'}
+                            </div>
+                        </motion.div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
 
                 {/* Input Panel */}
                 <div className="bg-[#0a0b10]/90 backdrop-blur-md border border-[#39ff14]/50 rounded-lg p-3 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
