@@ -109,11 +109,16 @@ export function NeuralInterface() {
         };
         recognition.onresult = (event: any) => {
           const result = event.results[event.results.length - 1];
+          const transcript = result[0].transcript;
+          
+          // Show interim transcript in input field for visual feedback
+          setInputInternal(transcript);
+          
           if (result.isFinal) {
-            const transcript = result[0].transcript;
             console.log("[NeuralInterface] Final transcript:", transcript);
             if (transcript.trim()) {
               sendMessage({ role: 'user', content: transcript });
+              setInputInternal(""); // Clear after sending
               playConfirm();
             }
           }
@@ -285,28 +290,38 @@ export function NeuralInterface() {
         )}
       </AnimatePresence>
 
-      {/* Floating Avatar Trigger */}
+      {/* Floating Retro Robot Trigger */}
       <motion.button
-         drag
-         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
          onClick={() => setIsOpen(!isOpen)}
          className="fixed bottom-6 right-6 z-[130] group"
-         whileHover={{ scale: 1.1 }}
+         whileHover={{ scale: 1.05 }}
          whileTap={{ scale: 0.95 }}
       >
-          <div className="relative size-12 flex items-center justify-center">
-              {/* Spinning Rings */}
-              <div className="absolute inset-0 border-2 border-[#39ff14] rounded-full opacity-60 animate-[spin_4s_linear_infinite]"></div>
-              <div className="absolute inset-1 border border-[#39ff14] rounded-full opacity-40 animate-[spin_3s_linear_infinite_reverse]"></div>
-              
-              {/* Core */}
-              <div className={`size-6 bg-[#39ff14] rounded-full shadow-[0_0_15px_#39ff14] transition-all duration-300 ${isOpen ? 'scale-100' : 'scale-75 opacity-80'}`}>
-                  <div className="w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.8),transparent)]"></div>
+          <div className="relative size-14 flex items-center justify-center">
+              {/* Robot Head Container */}
+              <div className={`relative size-12 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#39ff14]/60 rounded-lg shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all duration-300 ${isOpen ? 'border-[#39ff14]' : ''}`}>
+                  {/* Robot Eyes */}
+                  <div className="absolute top-2 left-0 right-0 flex justify-center gap-2">
+                      <div className={`size-2 rounded-sm ${isListening ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}></div>
+                      <div className={`size-2 rounded-sm ${isListening ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}></div>
+                  </div>
+                  
+                  {/* Robot Mouth/Speaker Grille */}
+                  <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-[2px]">
+                      <div className="h-[2px] bg-[#39ff14]/40 rounded-full"></div>
+                      <div className="h-[2px] bg-[#39ff14]/30 rounded-full"></div>
+                      <div className="h-[2px] bg-[#39ff14]/20 rounded-full"></div>
+                  </div>
+                  
+                  {/* Antenna */}
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[2px] h-3 bg-[#39ff14]/60">
+                      <div className={`absolute -top-1 left-1/2 -translate-x-1/2 size-2 rounded-full ${isListening ? 'bg-red-500' : 'bg-[#39ff14]'} shadow-[0_0_6px_currentColor] ${isListening ? 'animate-ping' : ''}`}></div>
+                  </div>
               </div>
 
                {/* Activity Pulse */}
                {isLoading && (
-                   <div className="absolute inset-0 bg-[#39ff14]/30 rounded-full animate-ping"></div>
+                   <div className="absolute inset-0 bg-[#39ff14]/20 rounded-lg animate-ping"></div>
                )}
           </div>
       </motion.button>

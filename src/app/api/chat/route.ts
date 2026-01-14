@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await streamText({
-      model: google('gemini-2.0-flash-lite'),
+      model: google('gemini-flash-latest'),
       messages: finalMessages as any, // Cast to avoid strict type checks on our manual object
       system: `You are the Neural Interface for CCNote, a cyberpunk collaborative canvas.
 You are a helpful, efficient AI operator.
