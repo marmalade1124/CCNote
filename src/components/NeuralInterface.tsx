@@ -8,7 +8,8 @@ import { useSfx } from "@/hooks/useSfx";
 
 export function NeuralInterface() {
   // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
-  const { messages, input, setInput, append, isLoading, addToolResult } = useChat({
+  // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
+  const { messages, sendMessage, isLoading, addToolResult } = useChat({
     onToolCall: async ({ toolCall }) => {
       // @ts-ignore
       const { toolName, input } = toolCall;
@@ -61,6 +62,7 @@ export function NeuralInterface() {
   
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [inputInternal, setInputInternal] = useState("");
   const recognitionRef = useRef<any>(null);
 
   // Initialize Speech Recognition
@@ -78,10 +80,12 @@ export function NeuralInterface() {
         recognition.onend = () => setIsListening(false);
         recognition.onresult = (event: any) => {
           const transcript = event.results[0][0].transcript;
-          setInput(transcript);
+          setInputInternal(transcript);
           // Auto-send after voice
           setTimeout(() => {
-              append({ role: 'user', content: transcript });
+              // @ts-ignore
+              sendMessage({ role: 'user', content: transcript });
+              setInputInternal("");
               playConfirm();
           }, 500);
         };
@@ -89,7 +93,7 @@ export function NeuralInterface() {
         recognitionRef.current = recognition;
       }
     }
-  }, [append, setInput, playConfirm]);
+  }, [sendMessage, playConfirm]);
 
   const toggleListening = () => {
       if (!recognitionRef.current) return;
@@ -135,12 +139,18 @@ export function NeuralInterface() {
                     </div>
 
                     <form 
-                        onSubmit={(e) => { e.preventDefault(); append({ role: 'user', content: input }); setInput(""); }}
+                        onSubmit={(e) => { 
+                            e.preventDefault(); 
+                            if (!inputInternal.trim()) return;
+                            // @ts-ignore
+                            sendMessage({ role: 'user', content: inputInternal }); 
+                            setInputInternal(""); 
+                        }}
                         className="flex gap-2"
                     >
                         <input 
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
+                            value={inputInternal}
+                            onChange={e => setInputInternal(e.target.value)}
                             className="flex-1 bg-[#39ff14]/5 border border-[#39ff14]/30 rounded px-2 py-1 text-xs text-[#39ff14] placeholder-[#39ff14]/30 focus:outline-none focus:border-[#39ff14]"
                             placeholder="Type or Speak command..."
                         />
