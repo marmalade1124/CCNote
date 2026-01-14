@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCanvas } from "@/context/CanvasContext";
 import { useSfx } from "@/hooks/useSfx";
+import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
   const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
@@ -68,6 +69,29 @@ export function NeuralInterface() {
   const recognitionRef = useRef<any>(null);
   const spokenMessageIds = useRef<Set<string>>(new Set());
   const shouldListenRef = useRef(false); // Track if we WANT to be listening
+  const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMic, setSelectedMic] = useState<string>('');
+  const [showMicSettings, setShowMicSettings] = useState(false);
+
+  // Enumerate available microphones
+  useEffect(() => {
+    async function getMicrophones() {
+      try {
+        // Request permission first to get device labels
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const mics = devices.filter(d => d.kind === 'audioinput');
+        setMicrophones(mics);
+        if (mics.length > 0 && !selectedMic) {
+          setSelectedMic(mics[0].deviceId);
+        }
+        console.log('[NeuralInterface] Available microphones:', mics.map(m => m.label));
+      } catch (err) {
+        console.error('[NeuralInterface] Failed to get microphones:', err);
+      }
+    }
+    getMicrophones();
+  }, []);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -289,111 +313,65 @@ export function NeuralInterface() {
             </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Floating Retro Robot Trigger */}
-      <motion.button
-         onClick={() => setIsOpen(!isOpen)}
-         className="fixed bottom-6 right-6 z-[130] group"
-         whileHover={{ scale: 1.05 }}
-         whileTap={{ scale: 0.95 }}
-         animate={{
-           y: isListening ? [0, -2, 0, 2, 0] : isLoading ? 0 : [0, -3, 0], // Listening: vibrate, Loading: still, Idle: gentle bob
-           rotate: isListening ? [-1, 1, -1] : 0,
-         }}
-         transition={{
-           y: { duration: isListening ? 0.15 : 2, repeat: Infinity, ease: "easeInOut" },
-           rotate: { duration: 0.1, repeat: Infinity },
-         }}
-      >
-          <div className="relative size-16 flex items-center justify-center">
-              {/* Robot Head Container */}
-              <motion.div 
-                className={`relative size-14 bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] border-2 rounded-lg shadow-[0_0_25px_rgba(57,255,20,0.4)] transition-colors duration-300 ${
-                  isListening ? 'border-red-500 shadow-[0_0_25px_rgba(255,0,0,0.5)]' : 
-                  isLoading ? 'border-yellow-500 shadow-[0_0_25px_rgba(255,200,0,0.5)]' : 
-                  'border-[#39ff14]/70'
-                }`}
+      {/* Mic Settings Popover */}
+      <AnimatePresence>
+        {showMicSettings && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed bottom-28 right-6 z-[140] bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg p-3 w-64 shadow-[0_0_20px_rgba(57,255,20,0.2)]"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[#39ff14] text-xs font-bold tracking-wide">MIC SETTINGS</span>
+              <button 
+                onClick={() => setShowMicSettings(false)}
+                className="text-[#39ff14]/60 hover:text-[#39ff14] text-xs"
               >
-                  {/* Robot Eyes */}
-                  <div className="absolute top-2.5 left-0 right-0 flex justify-center gap-3">
-                      <motion.div 
-                        className={`size-2.5 rounded-sm ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_10px_currentColor]`}
-                        animate={{
-                          scale: isListening ? [1, 1.3, 1] : isLoading ? [1, 0.8, 1] : 1,
-                          opacity: isListening ? [1, 0.5, 1] : 1,
-                        }}
-                        transition={{ duration: 0.3, repeat: Infinity }}
-                      />
-                      <motion.div 
-                        className={`size-2.5 rounded-sm ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_10px_currentColor]`}
-                        animate={{
-                          scale: isListening ? [1, 1.3, 1] : isLoading ? [1, 0.8, 1] : 1,
-                          opacity: isListening ? [1, 0.5, 1] : 1,
-                        }}
-                        transition={{ duration: 0.3, repeat: Infinity, delay: 0.15 }}
-                      />
-                  </div>
-                  
-                  {/* Robot Mouth/Speaker Grille - Animated when speaking/loading */}
-                  <div className="absolute bottom-2.5 left-2 right-2 flex flex-col gap-[3px]">
-                      <motion.div 
-                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500' : isListening ? 'bg-red-500/60' : 'bg-[#39ff14]/50'}`}
-                        animate={{ scaleX: isLoading ? [1, 0.6, 1, 0.8, 1] : 1 }}
-                        transition={{ duration: 0.2, repeat: Infinity }}
-                      />
-                      <motion.div 
-                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500/80' : isListening ? 'bg-red-500/40' : 'bg-[#39ff14]/35'}`}
-                        animate={{ scaleX: isLoading ? [0.8, 1, 0.5, 1, 0.7] : 1 }}
-                        transition={{ duration: 0.25, repeat: Infinity }}
-                      />
-                      <motion.div 
-                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500/60' : isListening ? 'bg-red-500/30' : 'bg-[#39ff14]/20'}`}
-                        animate={{ scaleX: isLoading ? [0.6, 0.9, 1, 0.6, 1] : 1 }}
-                        transition={{ duration: 0.18, repeat: Infinity }}
-                      />
-                  </div>
-                  
-                  {/* Antenna */}
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-[2px] h-4 bg-gradient-to-t from-[#39ff14]/60 to-transparent">
-                      <motion.div 
-                        className={`absolute -top-1.5 left-1/2 -translate-x-1/2 size-2.5 rounded-full ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}
-                        animate={{
-                          scale: isListening ? [1, 1.5, 1] : [1, 1.2, 1],
-                          opacity: isListening ? [1, 0.3, 1] : 1,
-                        }}
-                        transition={{ duration: isListening ? 0.3 : 1.5, repeat: Infinity }}
-                      />
-                  </div>
+                ✕
+              </button>
+            </div>
+            
+            <select
+              value={selectedMic}
+              onChange={(e) => setSelectedMic(e.target.value)}
+              className="w-full bg-[#0a0b10] border border-[#39ff14]/30 rounded px-2 py-1.5 text-xs text-[#39ff14] focus:outline-none focus:border-[#39ff14]"
+            >
+              {microphones.length === 0 ? (
+                <option value="">No microphones found</option>
+              ) : (
+                microphones.map((mic) => (
+                  <option key={mic.deviceId} value={mic.deviceId}>
+                    {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                  </option>
+                ))
+              )}
+            </select>
+            
+            <div className="mt-2 text-[8px] text-[#39ff14]/40">
+              {microphones.length} device(s) available
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                  {/* Side Bolts */}
-                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 size-2 bg-[#39ff14]/30 rounded-full border border-[#39ff14]/50"></div>
-                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 size-2 bg-[#39ff14]/30 rounded-full border border-[#39ff14]/50"></div>
-              </motion.div>
-
-               {/* Sound Wave Effect when Listening */}
-               {isListening && (
-                   <>
-                     <motion.div 
-                       className="absolute inset-0 border-2 border-red-500/50 rounded-lg"
-                       animate={{ scale: [1, 1.3, 1.3], opacity: [0.8, 0, 0] }}
-                       transition={{ duration: 1, repeat: Infinity }}
-                     />
-                     <motion.div 
-                       className="absolute inset-0 border-2 border-red-500/30 rounded-lg"
-                       animate={{ scale: [1, 1.5, 1.5], opacity: [0.6, 0, 0] }}
-                       transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}
-                     />
-                   </>
-               )}
-          </div>
-          
-          {/* Status Label */}
-          <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-[8px] font-bold tracking-wider whitespace-nowrap ${
-            isListening ? 'text-red-500' : isLoading ? 'text-yellow-500' : 'text-[#39ff14]/60'
-          }`}>
-            {isListening ? '● REC' : isLoading ? '◐ PROC' : '○ IDLE'}
-          </div>
+      {/* Settings Gear Button */}
+      <motion.button
+        onClick={() => setShowMicSettings(!showMicSettings)}
+        className="fixed bottom-8 right-24 z-[125] p-2 rounded-full bg-[#0a0b10]/80 border border-[#39ff14]/30 text-[#39ff14]/60 hover:text-[#39ff14] hover:border-[#39ff14]/60 transition-colors"
+        whileHover={{ scale: 1.1, rotate: 90 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="material-symbols-outlined text-sm">settings</span>
       </motion.button>
+
+      {/* EMO-style Robot Trigger */}
+      <EmoRobot
+        isListening={isListening}
+        isLoading={isLoading}
+        isOpen={isOpen}
+        onClick={() => setIsOpen(!isOpen)}
+      />
     </>
   );
 }
