@@ -161,6 +161,25 @@ export function NeuralInterface() {
                             }`}
                         >
                             {(m as any).content}
+                            
+                            {/* Render Tool Invocations */}
+                            {(m as any).toolInvocations?.map((toolInv: any, toolIndex: number) => (
+                                <div key={toolIndex} className="mt-1 bg-[#39ff14]/5 border border-[#39ff14]/20 rounded p-1 text-[10px] font-mono">
+                                    <div className="flex items-center gap-1 opacity-70">
+                                        <span className="material-symbols-outlined text-[10px]">terminal</span>
+                                        <span>EXEC: {toolInv.toolName}</span>
+                                    </div>
+                                    <div className="opacity-50 truncate max-w-[150px]">
+                                        {JSON.stringify(toolInv.args)}
+                                    </div>
+                                    {toolInv.result && (
+                                         <div className="mt-1 text-[#39ff14] opacity-80 border-t border-[#39ff14]/10 pt-1">
+                                            ➔ {JSON.stringify(toolInv.result)}
+                                         </div>
+                                    )}
+                                </div>
+                            ))}
+
                             <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
                                 {m.role === 'user' ? 'USER_CMD' : 'AI_CORE'}
                             </div>
@@ -189,6 +208,8 @@ export function NeuralInterface() {
                         className="flex gap-2"
                     >
                         <input 
+                            id="chat-input"
+                            name="chat-input"
                             value={inputInternal}
                             onChange={e => setInputInternal(e.target.value)}
                             className="flex-1 bg-[#39ff14]/5 border border-[#39ff14]/30 rounded px-2 py-1 text-xs text-[#39ff14] placeholder-[#39ff14]/30 focus:outline-none focus:border-[#39ff14]"
