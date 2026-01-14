@@ -120,9 +120,9 @@ export function CanvasEditor() {
   const dragElementRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null); // Element Original World Pos
   const dragStartMouseRef = useRef<{x: number, y: number} | null>(null); // Mouse Original Screen Pos
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start (Mouse - Offset)
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
@@ -691,6 +691,17 @@ export function CanvasEditor() {
 
       try {
           setIsUploading(true); // START UPLOAD INDICATOR
+          setUploadProgress(0);
+          
+          // Simulated progress interval
+          const progressInterval = setInterval(() => {
+             setUploadProgress(prev => {
+                 if (prev >= 95) return prev; // Hold at 95%
+                 // Decaying increment: smaller steps as we get closer to 95
+                 const remaining = 95 - prev;
+                 return prev + (remaining * 0.1); 
+             });
+          }, 200);
 
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -700,11 +711,15 @@ export function CanvasEditor() {
               .from('images')
               .upload(filePath, file);
 
+          clearInterval(progressInterval); // Stop simulation
+
           if (uploadError) {
               console.error('Upload error:', uploadError);
               alert('Failed to upload image: ' + uploadError.message);
               return;
           }
+          
+          setUploadProgress(100); // Complete
 
           const { data: { publicUrl } } = supabase.storage
               .from('images')
@@ -750,7 +765,11 @@ export function CanvasEditor() {
           console.error('Unexpected error uploading:', err);
           alert("An error occurred during upload.");
       } finally {
-        setIsUploading(false); // STOP UPLOAD INDICATOR
+        // Short delay to let the user see 100%
+        setTimeout(() => {
+            setIsUploading(false); // STOP UPLOAD INDICATOR
+            setUploadProgress(0);
+        }, 500);
       }
   };
 
@@ -1697,18 +1716,26 @@ export function CanvasEditor() {
       {isUploading && (
         <div className="fixed inset-0 z-[60] flex items-end justify-end p-8 pointer-events-none">
             <div className="bg-[#0a0b10]/95 border border-[#39ff14] p-4 min-w-[300px] shadow-[0_0_20px_rgba(57,255,20,0.2)] animate-in slide-in-from-bottom duration-300">
-                <div className="flex items-center gap-2 mb-2 border-b border-[#39ff14]/30 pb-2">
-                    <span className="material-symbols-outlined text-[#39ff14] animate-spin">sync</span>
-                    <span className="text-[#39ff14] font-bold text-sm tracking-widest uppercase">
-                        UPLINK_ESTABLISHED
-                    </span>
+                <div className="flex items-center justify-between gap-2 mb-2 border-b border-[#39ff14]/30 pb-2">
+                    <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#39ff14] animate-spin">sync</span>
+                        <span className="text-[#39ff14] font-bold text-sm tracking-widest uppercase">
+                            UPLINK_BUSY
+                        </span>
+                    </div>
+                    <span className="text-[#39ff14] font-mono font-bold">{Math.round(uploadProgress)}%</span>
                 </div>
                 <div className="font-mono text-xs text-[#39ff14]/80 space-y-1">
-                    <p className="typing-line-1">&gt; ENCRYPTING_DATA_PACKETS...</p>
-                    <p className="typing-line-2 animate-pulse">&gt; TRANSFERRING_TO_STORAGE...</p>
+                    <p className="typing-line-1">&gt; SENDING_PACKETS...</p>
+                    <p className="typing-line-2 animate-pulse">&gt; {Math.round(uploadProgress * 1024 / 100)}KB_TRANSFERRED</p>
                 </div>
-                <div className="mt-3 h-1 w-full bg-[#39ff14]/20 overflow-hidden">
-                    <div className="h-full bg-[#39ff14] animate-[width-load_1.5s_ease-in-out_infinite]"></div>
+                {/* Progress Bar Container */}
+                <div className="mt-3 h-2 w-full bg-[#39ff14]/20 overflow-hidden relative border border-[#39ff14]/30">
+                     {/* Filled Bar */}
+                    <div 
+                        className="h-full bg-[#39ff14] transition-all duration-200 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                    ></div>
                 </div>
             </div>
         </div>
