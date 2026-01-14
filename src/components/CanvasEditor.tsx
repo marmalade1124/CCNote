@@ -291,10 +291,12 @@ export function CanvasEditor() {
   };
 
   const toggleCardCheckbox = (elementId: string, lineIndex: number) => {
-      const el = activeCanvas?.elements.find(e => e.id === elementId);
-      if (!el) return;
+      // Use localContent if available to ensure we toggle what is currently visible
+      const currentContent = localContent[elementId] ?? activeCanvas?.elements.find(e => e.id === elementId)?.content;
       
-      const cardData = parseCardContent(el.content);
+      if (!currentContent) return;
+      
+      const cardData = parseCardContent(currentContent);
       const lines = cardData.description.split('\n');
       
       // lineIndex is 0-based index from node.position.start.line - 1
