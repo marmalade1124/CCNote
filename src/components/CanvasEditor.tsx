@@ -122,6 +122,7 @@ export function CanvasEditor() {
   const dragStartMouseRef = useRef<{x: number, y: number} | null>(null); // Mouse Original Screen Pos
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start (Mouse - Offset)
+  const [isUploading, setIsUploading] = useState(false);
 
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
@@ -689,10 +690,12 @@ export function CanvasEditor() {
       }
 
       try {
+          setIsUploading(true); // START UPLOAD INDICATOR
+
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
           const filePath = `${activeCanvas.id}/${fileName}`;
-
+          
           const { error: uploadError } = await supabase.storage
               .from('images')
               .upload(filePath, file);
@@ -746,6 +749,8 @@ export function CanvasEditor() {
       } catch (err) {
           console.error('Unexpected error uploading:', err);
           alert("An error occurred during upload.");
+      } finally {
+        setIsUploading(false); // STOP UPLOAD INDICATOR
       }
   };
 
@@ -1686,6 +1691,27 @@ export function CanvasEditor() {
                   )}
               </div>
           </div>
+      )}
+
+      {/* Upload Progress Overlay */}
+      {isUploading && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-end p-8 pointer-events-none">
+            <div className="bg-[#0a0b10]/95 border border-[#39ff14] p-4 min-w-[300px] shadow-[0_0_20px_rgba(57,255,20,0.2)] animate-in slide-in-from-bottom duration-300">
+                <div className="flex items-center gap-2 mb-2 border-b border-[#39ff14]/30 pb-2">
+                    <span className="material-symbols-outlined text-[#39ff14] animate-spin">sync</span>
+                    <span className="text-[#39ff14] font-bold text-sm tracking-widest uppercase">
+                        UPLINK_ESTABLISHED
+                    </span>
+                </div>
+                <div className="font-mono text-xs text-[#39ff14]/80 space-y-1">
+                    <p className="typing-line-1">&gt; ENCRYPTING_DATA_PACKETS...</p>
+                    <p className="typing-line-2 animate-pulse">&gt; TRANSFERRING_TO_STORAGE...</p>
+                </div>
+                <div className="mt-3 h-1 w-full bg-[#39ff14]/20 overflow-hidden">
+                    <div className="h-full bg-[#39ff14] animate-[width-load_1.5s_ease-in-out_infinite]"></div>
+                </div>
+            </div>
+        </div>
       )}
 
       {/* Radar Minimap */}
