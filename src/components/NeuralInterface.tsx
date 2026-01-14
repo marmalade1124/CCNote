@@ -67,6 +67,7 @@ export function NeuralInterface() {
   const [inputInternal, setInputInternal] = useState("");
   const recognitionRef = useRef<any>(null);
   const spokenMessageIds = useRef<Set<string>>(new Set());
+  const shouldListenRef = useRef(false); // Track if we WANT to be listening
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -75,7 +76,7 @@ export function NeuralInterface() {
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true; // Keep listening
-        recognition.interimResults = false;
+        recognition.interimResults = true; // Show interim results to keep connection alive
         recognition.lang = "en-US";
         
         recognition.onstart = () => {
@@ -84,18 +85,37 @@ export function NeuralInterface() {
         };
         recognition.onend = () => {
           console.log("[NeuralInterface] Speech recognition ended");
-          setIsListening(false);
+          // Auto-restart if we still want to be listening
+          if (shouldListenRef.current) {
+            console.log("[NeuralInterface] Restarting speech recognition...");
+            try {
+              recognition.start();
+            } catch (e) {
+              console.error("[NeuralInterface] Failed to restart:", e);
+              setIsListening(false);
+              shouldListenRef.current = false;
+            }
+          } else {
+            setIsListening(false);
+          }
         };
         recognition.onerror = (event: any) => {
           console.error("[NeuralInterface] Speech recognition error:", event.error);
-          setIsListening(false);
+          // Don't stop listening on 'no-speech' error, just let it auto-restart
+          if (event.error === 'aborted' || event.error === 'not-allowed') {
+            setIsListening(false);
+            shouldListenRef.current = false;
+          }
         };
         recognition.onresult = (event: any) => {
-          const transcript = event.results[event.results.length - 1][0].transcript;
-          console.log("[NeuralInterface] Transcript:", transcript);
-          if (transcript.trim()) {
-            sendMessage({ role: 'user', content: transcript });
-            playConfirm();
+          const result = event.results[event.results.length - 1];
+          if (result.isFinal) {
+            const transcript = result[0].transcript;
+            console.log("[NeuralInterface] Final transcript:", transcript);
+            if (transcript.trim()) {
+              sendMessage({ role: 'user', content: transcript });
+              playConfirm();
+            }
           }
         };
         
@@ -143,10 +163,16 @@ export function NeuralInterface() {
   const toggleListening = () => {
       if (!recognitionRef.current) return;
       if (isListening) {
+          shouldListenRef.current = false; // Signal we want to stop
           recognitionRef.current.stop();
       } else {
           playClick();
-          recognitionRef.current.start();
+          shouldListenRef.current = true; // Signal we want to keep listening
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.error("[NeuralInterface] Failed to start recognition:", e);
+          }
       }
   };
 
