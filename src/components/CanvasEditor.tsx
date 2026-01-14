@@ -146,6 +146,22 @@ export function CanvasEditor() {
   
   const activeCommandSetter = useRef<((s: string) => void) | null>(null);
 
+  // Resize State
+  const [resizeTarget, setResizeTarget] = useState<{ id: string, startX: number, startY: number, startWidth: number, startHeight: number } | null>(null);
+
+  const handleResizeStart = (e: React.MouseEvent, id: string, width: number, height: number) => {
+      e.stopPropagation();
+      setResizeTarget({ 
+          id, 
+          startX: e.clientX, 
+          startY: e.clientY, 
+          startWidth: width, 
+          startHeight: height 
+      });
+  };
+
+
+
   // Slash Command State
   const [commandMenu, setCommandMenu] = useState<{
       visible: boolean;
@@ -849,6 +865,18 @@ export function CanvasEditor() {
   }, [canvasEl]); // Depend on canvasEl
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // 0. Handle Resizing
+    if (resizeTarget) {
+        const deltaX = (e.clientX - resizeTarget.startX) / zoom;
+        const deltaY = (e.clientY - resizeTarget.startY) / zoom;
+        
+        updateElement(resizeTarget.id, {
+            width: Math.max(200, resizeTarget.startWidth + deltaX),
+            height: Math.max(100, resizeTarget.startHeight + deltaY)
+        });
+        return;
+    }
+
     // Check if handling Pan (either via Tool or Middle Click)
     if (isDragging && panStartRef.current) {
         setViewOffset({
@@ -888,9 +916,14 @@ export function CanvasEditor() {
             setDragTargetId(target ? target.id : null);
         }
     }
-  }, [isDragging, activeTool, activeCanvas, viewOffset, zoom]);
+  }, [isDragging, activeTool, activeCanvas, viewOffset, zoom, resizeTarget]);
 
   const handleMouseUp = useCallback(async () => {
+    if (resizeTarget) {
+        setResizeTarget(null);
+        return;
+    }
+
     setDragTargetId(null);
     
     // Check if finishing Pan
