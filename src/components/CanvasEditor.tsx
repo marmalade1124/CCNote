@@ -367,6 +367,11 @@ export function CanvasEditor() {
           }
       }
   };
+  const handleInputKeyDown = (
+      e: React.KeyboardEvent, 
+      elementId: string, 
+      currentContent: string, 
+      setContent: (s: string) => void,
       fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title' = 'plain'
   ) => {
        playTyping(); // Play sound on every key press in inputs
