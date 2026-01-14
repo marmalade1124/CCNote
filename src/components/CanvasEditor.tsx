@@ -300,16 +300,28 @@ export function CanvasEditor() {
       const lines = cardData.description.split('\n');
       
       // lineIndex is 0-based index from node.position.start.line - 1
+      console.log('toggleCardCheckbox attempting index:', lineIndex, 'Total lines:', lines.length);
       if (lines[lineIndex] !== undefined) {
           const line = lines[lineIndex];
+          console.log('Current line content:', line);
+          
+          let newLine = line;
           if (line.includes('[ ]')) {
-              lines[lineIndex] = line.replace('[ ]', '[x]');
+              newLine = line.replace('[ ]', '[x]');
           } else if (line.includes('[x]')) {
-              lines[lineIndex] = line.replace('[x]', '[ ]');
+              newLine = line.replace('[x]', '[ ]');
           }
           
-          const newDesc = lines.join('\n');
-          handleContentChange(elementId, serializeCardContent(cardData.title, newDesc));
+          if (newLine !== line) {
+              console.log('Updating line to:', newLine);
+              lines[lineIndex] = newLine;
+              const newDesc = lines.join('\n');
+              handleContentChange(elementId, serializeCardContent(cardData.title, newDesc));
+          } else {
+              console.warn('Line did not contain expected checkbox brackets');
+          }
+      } else {
+          console.warn('Line index out of bounds');
       }
   };
 
@@ -1466,8 +1478,12 @@ export function CanvasEditor() {
                                                                         onChange={() => {}} 
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
+                                                                            console.log('Checkbox clicked', { node });
                                                                             if (node?.position?.start?.line) {
+                                                                                console.log('Toggling line:', node.position.start.line - 1);
                                                                                 toggleCardCheckbox(element.id, node.position.start.line - 1);
+                                                                            } else {
+                                                                                console.warn('No line position found for checkbox');
                                                                             }
                                                                         }}
                                                                         onMouseDown={(e) => e.stopPropagation()}
