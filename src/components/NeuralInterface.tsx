@@ -125,11 +125,20 @@ export function NeuralInterface() {
         };
         recognition.onerror = (event: any) => {
           console.error("[NeuralInterface] Speech recognition error:", event.error);
-          // Don't stop listening on 'no-speech' error, just let it auto-restart
-          if (event.error === 'aborted' || event.error === 'not-allowed') {
+          
+          // Stop on critical errors
+          if (event.error === 'aborted' || event.error === 'not-allowed' || event.error === 'network') {
             setIsListening(false);
             shouldListenRef.current = false;
+            
+            if (event.error === 'network') {
+              console.error("[NeuralInterface] Network error - check your internet connection. Speech API requires online access.");
+              // Show error in input field
+              setInputInternal("⚠️ Network error - check internet connection");
+              setTimeout(() => setInputInternal(""), 3000);
+            }
           }
+          // 'no-speech' errors are fine, will auto-restart via onend
         };
         recognition.onresult = (event: any) => {
           const result = event.results[event.results.length - 1];
