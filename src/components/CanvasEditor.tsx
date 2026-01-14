@@ -274,6 +274,27 @@ export function CanvasEditor() {
       handleContentChange(elementId, content);
   };
 
+  const toggleCardCheckbox = (elementId: string, lineIndex: number) => {
+      const el = activeCanvas?.elements.find(e => e.id === elementId);
+      if (!el) return;
+      
+      const cardData = parseCardContent(el.content);
+      const lines = cardData.description.split('\n');
+      
+      // lineIndex is 0-based index from node.position.start.line - 1
+      if (lines[lineIndex] !== undefined) {
+          const line = lines[lineIndex];
+          if (line.includes('[ ]')) {
+              lines[lineIndex] = line.replace('[ ]', '[x]');
+          } else if (line.includes('[x]')) {
+              lines[lineIndex] = line.replace('[x]', '[ ]');
+          }
+          
+          const newDesc = lines.join('\n');
+          handleContentChange(elementId, serializeCardContent(cardData.title, newDesc));
+      }
+  };
+
   const handleInputKeyDown = (
       e: React.KeyboardEvent, 
       elementId: string, 
@@ -1398,7 +1419,30 @@ export function CanvasEditor() {
                                             <div className="w-full flex-1 text-xs text-[#eca013]/80 font-mono leading-relaxed overflow-hidden markdown-preview">
                                                 <ReactMarkdown 
                                                     remarkPlugins={[remarkGfm, [remarkWikiLink, { hrefTemplate: (permalink: string) => `#${permalink}` }]]}
-                                                    components={markdownComponents}
+                                                    components={{
+                                                        ...markdownComponents,
+                                                        input: ({node, checked, ...props}: any) => {
+                                                            if (props.type === "checkbox") {
+                                                                return (
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={checked} 
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            // remark-gfm source mapping seems unreliable for exact line in some versions
+                                                                            // But node.position.start.line should be 1-based line number relative to the input string
+                                                                            if (node?.position?.start?.line) {
+                                                                                toggleCardCheckbox(element.id, node.position.start.line - 1);
+                                                                            }
+                                                                        }}
+                                                                        className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer"
+                                                                        {...props} 
+                                                                    />
+                                                                );
+                                                            }
+                                                            return <input {...props} />;
+                                                        }
+                                                    }}
                                                 >
                                                     {cardData.description || "_No Data_"}
                                                 </ReactMarkdown>
