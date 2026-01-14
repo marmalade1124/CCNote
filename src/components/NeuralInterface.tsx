@@ -296,33 +296,102 @@ export function NeuralInterface() {
          className="fixed bottom-6 right-6 z-[130] group"
          whileHover={{ scale: 1.05 }}
          whileTap={{ scale: 0.95 }}
+         animate={{
+           y: isListening ? [0, -2, 0, 2, 0] : isLoading ? 0 : [0, -3, 0], // Listening: vibrate, Loading: still, Idle: gentle bob
+           rotate: isListening ? [-1, 1, -1] : 0,
+         }}
+         transition={{
+           y: { duration: isListening ? 0.15 : 2, repeat: Infinity, ease: "easeInOut" },
+           rotate: { duration: 0.1, repeat: Infinity },
+         }}
       >
-          <div className="relative size-14 flex items-center justify-center">
+          <div className="relative size-16 flex items-center justify-center">
               {/* Robot Head Container */}
-              <div className={`relative size-12 bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] border-2 border-[#39ff14]/60 rounded-lg shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all duration-300 ${isOpen ? 'border-[#39ff14]' : ''}`}>
+              <motion.div 
+                className={`relative size-14 bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] border-2 rounded-lg shadow-[0_0_25px_rgba(57,255,20,0.4)] transition-colors duration-300 ${
+                  isListening ? 'border-red-500 shadow-[0_0_25px_rgba(255,0,0,0.5)]' : 
+                  isLoading ? 'border-yellow-500 shadow-[0_0_25px_rgba(255,200,0,0.5)]' : 
+                  'border-[#39ff14]/70'
+                }`}
+              >
                   {/* Robot Eyes */}
-                  <div className="absolute top-2 left-0 right-0 flex justify-center gap-2">
-                      <div className={`size-2 rounded-sm ${isListening ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}></div>
-                      <div className={`size-2 rounded-sm ${isListening ? 'bg-red-500 animate-pulse' : isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}></div>
+                  <div className="absolute top-2.5 left-0 right-0 flex justify-center gap-3">
+                      <motion.div 
+                        className={`size-2.5 rounded-sm ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_10px_currentColor]`}
+                        animate={{
+                          scale: isListening ? [1, 1.3, 1] : isLoading ? [1, 0.8, 1] : 1,
+                          opacity: isListening ? [1, 0.5, 1] : 1,
+                        }}
+                        transition={{ duration: 0.3, repeat: Infinity }}
+                      />
+                      <motion.div 
+                        className={`size-2.5 rounded-sm ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_10px_currentColor]`}
+                        animate={{
+                          scale: isListening ? [1, 1.3, 1] : isLoading ? [1, 0.8, 1] : 1,
+                          opacity: isListening ? [1, 0.5, 1] : 1,
+                        }}
+                        transition={{ duration: 0.3, repeat: Infinity, delay: 0.15 }}
+                      />
                   </div>
                   
-                  {/* Robot Mouth/Speaker Grille */}
-                  <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-[2px]">
-                      <div className="h-[2px] bg-[#39ff14]/40 rounded-full"></div>
-                      <div className="h-[2px] bg-[#39ff14]/30 rounded-full"></div>
-                      <div className="h-[2px] bg-[#39ff14]/20 rounded-full"></div>
+                  {/* Robot Mouth/Speaker Grille - Animated when speaking/loading */}
+                  <div className="absolute bottom-2.5 left-2 right-2 flex flex-col gap-[3px]">
+                      <motion.div 
+                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500' : isListening ? 'bg-red-500/60' : 'bg-[#39ff14]/50'}`}
+                        animate={{ scaleX: isLoading ? [1, 0.6, 1, 0.8, 1] : 1 }}
+                        transition={{ duration: 0.2, repeat: Infinity }}
+                      />
+                      <motion.div 
+                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500/80' : isListening ? 'bg-red-500/40' : 'bg-[#39ff14]/35'}`}
+                        animate={{ scaleX: isLoading ? [0.8, 1, 0.5, 1, 0.7] : 1 }}
+                        transition={{ duration: 0.25, repeat: Infinity }}
+                      />
+                      <motion.div 
+                        className={`h-[2px] rounded-full ${isLoading ? 'bg-yellow-500/60' : isListening ? 'bg-red-500/30' : 'bg-[#39ff14]/20'}`}
+                        animate={{ scaleX: isLoading ? [0.6, 0.9, 1, 0.6, 1] : 1 }}
+                        transition={{ duration: 0.18, repeat: Infinity }}
+                      />
                   </div>
                   
                   {/* Antenna */}
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[2px] h-3 bg-[#39ff14]/60">
-                      <div className={`absolute -top-1 left-1/2 -translate-x-1/2 size-2 rounded-full ${isListening ? 'bg-red-500' : 'bg-[#39ff14]'} shadow-[0_0_6px_currentColor] ${isListening ? 'animate-ping' : ''}`}></div>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-[2px] h-4 bg-gradient-to-t from-[#39ff14]/60 to-transparent">
+                      <motion.div 
+                        className={`absolute -top-1.5 left-1/2 -translate-x-1/2 size-2.5 rounded-full ${isListening ? 'bg-red-500' : isLoading ? 'bg-yellow-500' : 'bg-[#39ff14]'} shadow-[0_0_8px_currentColor]`}
+                        animate={{
+                          scale: isListening ? [1, 1.5, 1] : [1, 1.2, 1],
+                          opacity: isListening ? [1, 0.3, 1] : 1,
+                        }}
+                        transition={{ duration: isListening ? 0.3 : 1.5, repeat: Infinity }}
+                      />
                   </div>
-              </div>
 
-               {/* Activity Pulse */}
-               {isLoading && (
-                   <div className="absolute inset-0 bg-[#39ff14]/20 rounded-lg animate-ping"></div>
+                  {/* Side Bolts */}
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 size-2 bg-[#39ff14]/30 rounded-full border border-[#39ff14]/50"></div>
+                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 size-2 bg-[#39ff14]/30 rounded-full border border-[#39ff14]/50"></div>
+              </motion.div>
+
+               {/* Sound Wave Effect when Listening */}
+               {isListening && (
+                   <>
+                     <motion.div 
+                       className="absolute inset-0 border-2 border-red-500/50 rounded-lg"
+                       animate={{ scale: [1, 1.3, 1.3], opacity: [0.8, 0, 0] }}
+                       transition={{ duration: 1, repeat: Infinity }}
+                     />
+                     <motion.div 
+                       className="absolute inset-0 border-2 border-red-500/30 rounded-lg"
+                       animate={{ scale: [1, 1.5, 1.5], opacity: [0.6, 0, 0] }}
+                       transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}
+                     />
+                   </>
                )}
+          </div>
+          
+          {/* Status Label */}
+          <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-[8px] font-bold tracking-wider whitespace-nowrap ${
+            isListening ? 'text-red-500' : isLoading ? 'text-yellow-500' : 'text-[#39ff14]/60'
+          }`}>
+            {isListening ? '● REC' : isLoading ? '◐ PROC' : '○ IDLE'}
           </div>
       </motion.button>
     </>
