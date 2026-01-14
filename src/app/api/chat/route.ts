@@ -6,10 +6,16 @@ import { z } from 'zod';
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, canvasElements } = await req.json();
 
-  console.log("Recieved messages:", messages.length);
-  // console.log(JSON.stringify(messages, null, 2));
+  console.log("Recieved messages:", messages.length, "Canvas elements:", canvasElements?.length || 0);
+
+  // Build a summary of existing nodes for the AI
+  const nodesSummary = canvasElements?.length 
+    ? `\n\nCurrent Canvas Nodes (${canvasElements.length} total):\n${canvasElements.map((el: any) => 
+        `- [ID: ${el.id}] "${el.content?.substring(0, 100) || '(empty)'}" (type: ${el.type}, color: ${el.color || 'default'})`
+      ).join('\n')}`
+    : '\n\nThe canvas is currently empty.';
 
   const coreMessages = messages.map((m: any) => {
     if (m.role === 'user') {
@@ -94,7 +100,8 @@ You are a helpful, efficient AI operator.
 You can manipulate the canvas using the provided tools.
 If the user asks to create something, use the createNode tool.
 If they want to link things, use createConnection.
-Always be concise and efficient in your text responses. Use cyber-lingo occasionally (e.g., "Affirmative", "Executing", "Uplink established").`,
+When the user asks about existing nodes or their content, refer to the Current Canvas Nodes list below.
+Always be concise and efficient in your text responses. Use cyber-lingo occasionally (e.g., "Affirmative", "Executing", "Uplink established").${nodesSummary}`,
       tools: {
         createNode: tool({
           description: 'Create a new note or folder on the canvas',

@@ -7,9 +7,14 @@ import { useCanvas } from "@/context/CanvasContext";
 import { useSfx } from "@/hooks/useSfx";
 
 export function NeuralInterface() {
-  // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
+  const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
+  const { playClick, playConfirm, speak } = useSfx();
+
   // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
   const { messages, sendMessage, isLoading, addToolResult, error } = useChat({
+    body: {
+      canvasElements: activeCanvas?.elements || []
+    },
     onError: (err) => {
         console.error("AI Chat Error:", err);
     },
@@ -59,9 +64,6 @@ export function NeuralInterface() {
       addToolResult({ toolCallId: toolCall.toolCallId, result });
     },
   });
-
-  const { addElement, updateElement, addConnection } = useCanvas();
-  const { playClick, playConfirm, speak } = useSfx();
 
   // DEBUG: Log messages whenever they change
   useEffect(() => {
