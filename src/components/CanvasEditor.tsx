@@ -782,11 +782,9 @@ export function CanvasEditor() {
 
       const PADDING = 24;
       const HEADER = 40;
-      const COL_WIDTH = 320; 
-      const ROW_HEIGHT = 220; 
+      const GAP = 20;
 
       const sorted = [...currentChildren].sort((a,b) => (a.y - b.y) || (a.x - b.x));
-      
       const batchUpdates: { id: string; changes: Partial<CanvasElement> }[] = [];
       
       if (collapsed) {
@@ -799,23 +797,58 @@ export function CanvasEditor() {
                batchUpdates.push({ id: folder.id, changes: { width: 220, height: 50 } });
           }
       } else {
-          for (let i = 0; i < sorted.length; i++) {
-              const child = sorted[i];
-              const col = i % 2;
-              const row = Math.floor(i / 2);
-              
-              const newX = folder.x + PADDING + (col * COL_WIDTH);
-              const newY = folder.y + HEADER + PADDING + (row * ROW_HEIGHT);
-              
-              if (child.x !== newX || child.y !== newY) {
-                  batchUpdates.push({ id: child.id, changes: { x: newX, y: newY } });
-              }
+          // Dynamic 2-Column Layout
+          // 1. Calculate Column Widths
+          let maxLeftWidth = 300; // Minimum width default
+          let maxRightWidth = 0;
+
+          // Check left column items (indices 0, 2, 4...)
+          for (let i = 0; i < sorted.length; i += 2) {
+              if (sorted[i].width > maxLeftWidth) maxLeftWidth = sorted[i].width;
+          }
+          // Check right column items (indices 1, 3, 5...) to determine total folder width
+          for (let i = 1; i < sorted.length; i += 2) {
+               if (sorted[i].width > maxRightWidth) maxRightWidth = sorted[i].width;
           }
 
-          const cols = Math.min(sorted.length, 2);
-          const rows = Math.ceil(sorted.length / 2);
-          const newWidth = Math.max(350, (PADDING * 2) + (cols * COL_WIDTH) - 20); 
-          const newHeight = Math.max(150, HEADER + PADDING + (rows * ROW_HEIGHT));
+          let currentY = folder.y + HEADER + PADDING;
+          const leftColX = folder.x + PADDING;
+          const rightColX = folder.x + PADDING + maxLeftWidth + GAP;
+
+          for (let i = 0; i < sorted.length; i += 2) {
+              const left = sorted[i];
+              const right = sorted[i+1]; // May be undefined
+              
+              const leftHeight = left.height || 100; // fallback
+              const rightHeight = right?.height || 0;
+              const rowHeight = Math.max(leftHeight, rightHeight);
+
+              // Update Left Item
+              const targetLeftX = leftColX;
+              const targetLeftY = currentY;
+              if (left.x !== targetLeftX || left.y !== targetLeftY) {
+                  batchUpdates.push({ id: left.id, changes: { x: targetLeftX, y: targetLeftY } });
+              }
+
+              // Update Right Item (if exists)
+              if (right) {
+                  const targetRightX = rightColX;
+                  const targetRightY = currentY;
+                  if (right.x !== targetRightX || right.y !== targetRightY) {
+                      batchUpdates.push({ id: right.id, changes: { x: targetRightX, y: targetRightY } });
+                  }
+              }
+
+              // Advance Y
+              currentY += rowHeight + GAP;
+          }
+
+          // Calculate final folder dimensions
+          // Width = PADDING + LeftColMax + GAP + RightColMax + PADDING
+          // If only 1 column (1 item), RightColMax is 0.
+          const totalContentWidth = PADDING + maxLeftWidth + (sorted.length > 1 ? GAP + maxRightWidth : 0) + PADDING;
+          const newWidth = Math.max(350, totalContentWidth); 
+          const newHeight = Math.max(150, currentY - folder.y + PADDING); // currentY already includes last gap? No, loop adds GAP at end.
           
           if (folder.width !== newWidth || folder.height !== newHeight) {
                batchUpdates.push({ id: folder.id, changes: { width: newWidth, height: newHeight } });
