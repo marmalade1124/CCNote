@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCanvas } from "@/context/CanvasContext";
 import { ProfileModal } from "./ProfileModal";
 import { PomodoroTimer } from "./PomodoroTimer";
+import { TypingDefenseGame } from "./TypingDefenseGame";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSfx } from "@/hooks/useSfx";
 
@@ -13,6 +14,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { playClick, playHover, playPowerDown, speak } = useSfx();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
+  const [isGameOpen, setIsGameOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,6 +88,16 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
 
         {/* Right: Clock & User */}
         <div className="flex items-center gap-4">
+             {/* Game Toggle */}
+             <button
+                onClick={() => { playClick(); setIsGameOpen(true); }}
+                onMouseEnter={playHover}
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                title="Launch Simulations"
+             >
+                <span className="material-symbols-outlined text-[18px]">sports_esports</span>
+             </button>
+
              {/* Timer Toggle */}
              <button
                 onClick={() => { playClick(); setIsTimerOpen(!isTimerOpen); }}
@@ -254,6 +266,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
       />
       
       {isTimerOpen && <PomodoroTimer onClose={() => setIsTimerOpen(false)} />}
+      {isGameOpen && <TypingDefenseGame onClose={() => setIsGameOpen(false)} />}
     </>
   );
 }
