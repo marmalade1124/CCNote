@@ -245,10 +245,14 @@ export function CanvasEditor() {
            // Determine which one is closer to end (active)
            if (lastWikiIndex > lastSlashIndex && lastWikiIndex !== -1) {
                 // Wiki Mode
-                setCommandMenu(prev => prev ? { ...prev, menuType: 'wiki', query: currentText.slice(lastWikiIndex + 2) } : null);
+                const rawC = currentText.slice(lastWikiIndex + 2);
+                const query = rawC.split('\n')[0]; // Stop at newline
+                setCommandMenu(prev => prev ? { ...prev, menuType: 'wiki', query } : null);
            } else if (lastSlashIndex !== -1) {
                 // Slash Mode 
-                setCommandMenu(prev => prev ? { ...prev, menuType: 'slash', query: currentText.slice(lastSlashIndex + 1) } : null);
+                const rawC = currentText.slice(lastSlashIndex + 1);
+                const query = rawC.split('\n')[0]; // Stop at newline
+                setCommandMenu(prev => prev ? { ...prev, menuType: 'slash', query } : null);
            } else {
                setCommandMenu(null); 
            }
