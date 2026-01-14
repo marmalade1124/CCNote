@@ -10,13 +10,13 @@ const MODES = {
   LONG: { label: "LONG_BRK", time: 15 * 60 },
 };
 
-export function PomodoroTimer({ onClose, onComplete }: { onClose: () => void; onComplete?: () => void }) {
+export function PomodoroTimer({ onClose, onComplete, lowVisibility }: { onClose: () => void; onComplete?: () => void; lowVisibility?: boolean }) {
   const [timeLeft, setTimeLeft] = useState(MODES.FOCUS.time);
-  const [totalDuration, setTotalDuration] = useState(MODES.FOCUS.time); // Store initial duration for progress calculation
+  const [totalDuration, setTotalDuration] = useState(MODES.FOCUS.time); 
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<keyof typeof MODES>("FOCUS");
   const [customTime, setCustomTime] = useState(25);
-  const { playConfirm, playClick, playError, playPowerDown } = useSfx(); // Added playPowerDown for finish
+  const { playConfirm, playClick, playError, playPowerDown } = useSfx(); 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatTime = (seconds: number) => {
@@ -57,32 +57,43 @@ export function PomodoroTimer({ onClose, onComplete }: { onClose: () => void; on
       const time = customTime * 60;
       setTimeLeft(time);
       setTotalDuration(time);
-      // We don't change 'mode' key technically but we override the time
   };
 
+  // Improved Timer Logic: Dependency only on isActive
   useEffect(() => {
     if (isActive && timeLeft > 0) {
       timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+            if (prev <= 1) {
+                // Determine finish in next tick? No, handle here to be precise
+                return 0;
+            }
+            return prev - 1;
+        });
       }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      // Timer Finished
-      playPowerDown(); // Play finish sound
-      setIsActive(false);
-      if (onComplete) onComplete(); // Trigger external complete handler
-      if (timerRef.current) clearInterval(timerRef.current);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, timeLeft, playPowerDown, onComplete]);
+  }, [isActive]);
 
-  // Progress Calculation based on Total Duration
+  // Handle Completion Side Effects
+  useEffect(() => {
+      if (timeLeft === 0 && isActive) {
+          playPowerDown();
+          setIsActive(false);
+          if (onComplete) onComplete();
+      }
+  }, [timeLeft, isActive, playPowerDown, onComplete]);
+
+  // Progress Calculation
   const progressPercent = (timeLeft / totalDuration) * 100;
 
   return (
-    <div className="fixed top-20 right-6 z-[110] w-72 bg-[#0a0b10]/95 border border-[#eca013]/30 shadow-[0_0_30px_rgba(236,160,19,0.15)] rounded-lg backdrop-blur-md p-6 animate-in fade-in slide-in-from-right duration-300 font-mono">
+    <div 
+        className={`fixed top-20 right-6 z-[110] w-72 bg-[#0a0b10]/95 border border-[#eca013]/30 shadow-[0_0_30px_rgba(236,160,19,0.15)] rounded-lg backdrop-blur-md p-6 animate-in fade-in slide-in-from-right duration-300 font-mono transition-opacity ${lowVisibility ? 'opacity-20 hover:opacity-100' : 'opacity-100'}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6 border-b border-[#eca013]/20 pb-2">
         <div className="flex items-center gap-2 text-[#eca013]">

@@ -268,7 +268,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
       {isTimerOpen && (
           <PomodoroTimer 
               onClose={() => setIsTimerOpen(false)} 
-              onComplete={() => setIsGameOpen(false)} 
+              onComplete={() => setIsGameOpen(false)}
+              lowVisibility={isGameOpen} 
           />
       )}
       {isGameOpen && <TypingDefenseGame onClose={() => setIsGameOpen(false)} />}
