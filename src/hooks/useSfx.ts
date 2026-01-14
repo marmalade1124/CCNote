@@ -193,22 +193,42 @@ export const useSfx = () => {
         osc.stop(now + 1.6);
     }, [initAudio]);
 
+    // Robotic beep speak - R2D2 style chirps based on text length
     const speak = useCallback((text: string) => {
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.volume = 0.8;
-            utterance.rate = 0.9; // Slower, more deliberate
-            utterance.pitch = 0.01; // Lowest possible pitch for flat robot voice
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        
+        // Generate beeps based on word count
+        const words = text.split(' ').length;
+        const beepCount = Math.min(words, 15); // Max 15 beeps
+        
+        for (let i = 0; i < beepCount; i++) {
+            const delay = i * 0.12; // 120ms between beeps
+            const now = ctx.currentTime + delay;
             
-            // Prefer "Microsoft Zira" or "Google US English"
-            const voices = window.speechSynthesis.getVoices();
-            const systemVoice = voices.find(v => v.name.includes('Zira')) || voices.find(v => v.name.includes('Google US English')) || voices[0];
-            if (systemVoice) utterance.voice = systemVoice;
-
-            window.speechSynthesis.speak(utterance);
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            // Randomize frequency for variety (300-1200 Hz)
+            const baseFreq = 400 + Math.random() * 800;
+            osc.type = Math.random() > 0.5 ? 'square' : 'sawtooth';
+            osc.frequency.setValueAtTime(baseFreq, now);
+            
+            // Frequency slide for expressiveness
+            const slide = (Math.random() - 0.5) * 400;
+            osc.frequency.linearRampToValueAtTime(baseFreq + slide, now + 0.08);
+            
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
         }
-    }, []);
+    }, [initAudio]);
 
     const playMerge = useCallback(() => {
         initAudio();

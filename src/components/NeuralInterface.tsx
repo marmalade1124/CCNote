@@ -367,11 +367,11 @@ export function NeuralInterface() {
       {/* Settings Gear Button */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-8 right-24 z-[125] p-2 rounded-full bg-[#0a0b10]/80 border border-[#39ff14]/30 text-[#39ff14]/60 hover:text-[#39ff14] hover:border-[#39ff14]/60 transition-colors"
+        className="fixed bottom-10 right-20 z-[125] p-1 rounded-full bg-[#0a0b10]/60 border border-[#39ff14]/20 text-[#39ff14]/40 hover:text-[#39ff14] hover:border-[#39ff14]/50 transition-colors"
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.95 }}
       >
-        <span className="material-symbols-outlined text-sm">settings</span>
+        <span className="material-symbols-outlined text-xs">settings</span>
       </motion.button>
 
       {/* EMO-style Robot Trigger */}
@@ -380,6 +380,7 @@ export function NeuralInterface() {
         isLoading={isLoading}
         isOpen={isOpen}
         onClick={() => setIsOpen(!isOpen)}
+        onMotivate={(msg) => speak(msg)}
       />
     </>
   );
