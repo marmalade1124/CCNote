@@ -1527,8 +1527,19 @@ export function CanvasEditor() {
                                              </ReactMarkdown>
                                         </div>
                                     )
+                                    )
                                 )}
                             </div>
+                            
+                            {/* Resize Handle (Global for Resizable Types) */}
+                            {(element.type === 'card' || element.type === 'image') && (
+                                <div 
+                                    className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-end justify-end p-1 z-50 opacity-50 hover:opacity-100 transition-opacity"
+                                    onMouseDown={(e) => handleResizeStart(e, element.id, element.width, element.height)}
+                                >
+                                    <div className="w-2 h-2 border-r-2 border-b-2 border-[#eca013] drop-shadow-[0_0_2px_rgba(236,160,19,0.8)]"></div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
