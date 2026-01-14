@@ -3,7 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Canvas Notes",
+  title: "CCNote",
   description: "Infinite canvas for your thoughts",
 };
 
