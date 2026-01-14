@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![CCNote Banner](docs/dashboard.png)
-
 **A futuristic, AI-powered collaborative canvas for visual note-taking and brainstorming.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)](https://nextjs.org/)
@@ -25,8 +23,6 @@ An AI-powered chat companion that can help you:
 - Create and manipulate nodes on the canvas via natural language
 - Answer questions and provide assistance
 - Execute canvas operations through voice or text commands
-
-![Neural Interface](docs/neural-interface.png)
 
 ### 🎨 Infinite Canvas Editor
 
@@ -73,8 +69,6 @@ A fun mini-game to practice typing while taking breaks:
 - Secure login system
 - User profiles
 - Persistent canvas state
-
-![Login Page](docs/login.png)
 
 ---
 
