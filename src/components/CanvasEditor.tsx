@@ -1420,13 +1420,6 @@ export function CanvasEditor() {
                                                 onMouseDown={(e) => e.stopPropagation()}
                                                 placeholder="Caption..."
                                             />
-                                            {/* Resize Handle */}
-                                            <div 
-                                                className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 opacity-50 hover:opacity-100"
-                                                onMouseDown={(e) => handleResizeStart(e, element.id, element.width, element.height)}
-                                            >
-                                                <div className="w-2 h-2 border-r-2 border-b-2 border-[#eca013]"></div>
-                                            </div>
                                         </div>
                                     );
                                 })()}
