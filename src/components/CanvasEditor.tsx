@@ -306,12 +306,28 @@ export function CanvasEditor() {
        // Trigger '/'
        if (e.key === '/') {
            const target = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
+           
+           // Calculate position based on cursor (approximate)
            const rect = target.getBoundingClientRect();
+           const cursorIndex = target.selectionStart || 0;
+           const textBefore = target.value.substring(0, cursorIndex);
+           const lines = textBefore.split('\n');
+           const lineCount = lines.length;
+           
+           // Estimate Y offset: Line Height ~20px + Padding
+           // We can also use a hidden span for exact coords, but lines count is a good heuristic
+           const lineHeight = 21; // roughly matched to textarea line-height
+           const topOffset = 16; // padding-top
+           const relativeY = topOffset + (lineCount * lineHeight);
+           
+           // Ensure it stays within bounds
+           const menuY = Math.min(rect.top + relativeY + 10, rect.bottom + 10);
+
            activeCommandSetter.current = setContent;
            setCommandMenu({
                visible: true,
-               x: rect.left + 20,
-               y: rect.bottom - 40,
+               x: rect.left + 20, // Keep Left aligned for now as X is hard to measure without mirror
+               y: menuY,
                elementId,
                fieldType,
                query: '',
@@ -325,11 +341,21 @@ export function CanvasEditor() {
             const target = e.currentTarget as HTMLTextAreaElement | HTMLInputElement;
             if (currentContent.endsWith('[')) { 
                 const rect = target.getBoundingClientRect();
+                
+                // Similar positioning for Wiki
+                const cursorIndex = target.selectionStart || 0;
+                const textBefore = target.value.substring(0, cursorIndex);
+                const lineCount = textBefore.split('\n').length;
+                const lineHeight = 21;
+                const topOffset = 16;
+                const relativeY = topOffset + (lineCount * lineHeight);
+                const menuY = Math.min(rect.top + relativeY + 10, rect.bottom + 10);
+                
                 activeCommandSetter.current = setContent;
                 setCommandMenu({
                     visible: true,
                     x: rect.left + 20,
-                    y: rect.bottom - 40,
+                    y: menuY,
                     elementId,
                     fieldType,
                     query: '',
