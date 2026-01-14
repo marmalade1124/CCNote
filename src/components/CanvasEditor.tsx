@@ -1471,6 +1471,8 @@ export function CanvasEditor() {
                                                                         }}
                                                                         onMouseDown={(e) => e.stopPropagation()}
                                                                         className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer z-50 relative"
+                                                                        disabled={false} // Force enable
+                                                                        readOnly={false}
                                                                         {...props} 
                                                                     />
                                                                 );
