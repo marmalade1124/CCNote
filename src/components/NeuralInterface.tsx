@@ -9,7 +9,10 @@ import { useSfx } from "@/hooks/useSfx";
 export function NeuralInterface() {
   // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
   // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
-  const { messages, sendMessage, isLoading, addToolResult } = useChat({
+  const { messages, sendMessage, isLoading, addToolResult, error } = useChat({
+    onError: (err) => {
+        console.error("AI Chat Error:", err);
+    },
     onToolCall: async ({ toolCall }) => {
       // @ts-ignore
       const { toolName, input } = toolCall;
@@ -138,6 +141,14 @@ export function NeuralInterface() {
                             // WAITING_FOR_INPUT...
                         </div>
                     )}
+                    
+                    {/* Error Banner */}
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/50 p-2 rounded text-red-500 text-xs font-mono mb-2">
+                            ERROR: {error.message}
+                        </div>
+                    )}
+
                     {messages.map((m, i) => (
                         <motion.div 
                             key={i}
