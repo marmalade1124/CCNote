@@ -1460,15 +1460,15 @@ export function CanvasEditor() {
                                                                     <input 
                                                                         type="checkbox" 
                                                                         checked={checked} 
-                                                                        onChange={(e) => {
+                                                                        onChange={() => {}} 
+                                                                        onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            // remark-gfm source mapping seems unreliable for exact line in some versions
-                                                                            // But node.position.start.line should be 1-based line number relative to the input string
                                                                             if (node?.position?.start?.line) {
                                                                                 toggleCardCheckbox(element.id, node.position.start.line - 1);
                                                                             }
                                                                         }}
-                                                                        className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer"
+                                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                                        className="accent-[#39ff14] w-3 h-3 mr-2 cursor-pointer z-50 relative"
                                                                         {...props} 
                                                                     />
                                                                 );
