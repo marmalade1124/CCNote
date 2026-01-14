@@ -676,8 +676,8 @@ export function CanvasEditor() {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (file.size > 2 * 1024 * 1024) { 
-          alert("Image is too large (Max 2MB for prototype).");
+      if (file.size > 5 * 1024 * 1024) { 
+          alert("Image is too large (Max 5MB).");
           return;
       }
 
