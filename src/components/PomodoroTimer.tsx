@@ -12,10 +12,11 @@ const MODES = {
 
 export function PomodoroTimer({ onClose }: { onClose: () => void }) {
   const [timeLeft, setTimeLeft] = useState(MODES.FOCUS.time);
+  const [totalDuration, setTotalDuration] = useState(MODES.FOCUS.time); // Store initial duration for progress calculation
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<keyof typeof MODES>("FOCUS");
   const [customTime, setCustomTime] = useState(25);
-  const { playConfirm, playClick, playError } = useSfx();
+  const { playConfirm, playClick, playError, playPowerDown } = useSfx(); // Added playPowerDown for finish
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatTime = (seconds: number) => {
@@ -32,14 +33,18 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
   const resetTimer = () => {
     playClick();
     setIsActive(false);
-    setTimeLeft(MODES[mode].time);
+    const time = MODES[mode].time;
+    setTimeLeft(time);
+    setTotalDuration(time);
   };
 
   const setTimerMode = (newMode: keyof typeof MODES) => {
     playClick();
     setMode(newMode);
     setIsActive(false);
-    setTimeLeft(MODES[newMode].time);
+    const time = MODES[newMode].time;
+    setTimeLeft(time);
+    setTotalDuration(time);
   };
 
   const applyCustomTime = () => {
@@ -49,7 +54,9 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
       }
       playConfirm();
       setIsActive(false);
-      setTimeLeft(customTime * 60);
+      const time = customTime * 60;
+      setTimeLeft(time);
+      setTotalDuration(time);
       // We don't change 'mode' key technically but we override the time
   };
 
@@ -59,8 +66,8 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && isActive) {
-      // Create a sound for finish later or reuse one
-      playConfirm(); 
+      // Timer Finished
+      playPowerDown(); // Play finish sound
       setIsActive(false);
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -68,11 +75,10 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, timeLeft, playConfirm]);
+  }, [isActive, timeLeft, playPowerDown]);
 
-  const progress = 1 - (timeLeft / (MODES[mode].time)); // Inverted for "filling up" or 0->1 based on elapsed? 
-  // Let's do remaining bar
-  const progressPercent = (timeLeft / (MODES[mode].time)) * 100;
+  // Progress Calculation based on Total Duration
+  const progressPercent = (timeLeft / totalDuration) * 100;
 
   return (
     <div className="fixed top-20 right-6 z-50 w-72 bg-[#0a0b10]/95 border border-[#eca013]/30 shadow-[0_0_30px_rgba(236,160,19,0.15)] rounded-lg backdrop-blur-md p-6 animate-in fade-in slide-in-from-right duration-300 font-mono">
