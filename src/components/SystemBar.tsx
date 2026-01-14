@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCanvas } from "@/context/CanvasContext";
 import { ProfileModal } from "./ProfileModal";
+import { PomodoroTimer } from "./PomodoroTimer";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSfx } from "@/hooks/useSfx";
 
@@ -11,6 +12,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
   const { playClick, playHover, playPowerDown, speak } = useSfx();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
+  const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,6 +86,20 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
 
         {/* Right: Clock & User */}
         <div className="flex items-center gap-4">
+             {/* Timer Toggle */}
+             <button
+                onClick={() => { playClick(); setIsTimerOpen(!isTimerOpen); }}
+                onMouseEnter={playHover}
+                className={`flex items-center gap-2 px-2 py-1 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
+                    isTimerOpen
+                    ? "text-[#eca013] border-[#eca013] bg-[#eca013]/10"
+                    : "text-[#eca013]/40 border-transparent hover:text-[#eca013] hover:bg-[#eca013]/5"
+                }`}
+                title="Toggle Chrono Sync"
+             >
+                <span className="material-symbols-outlined text-[18px]">timer</span>
+             </button>
+
              <div className="text-[#eca013]/40 font-mono text-xs tracking-widest">
                 {currentTime} <span className="text-[#39ff14]">●</span>
              </div>
@@ -109,6 +125,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
              </button>
         </div>
       </header>
+
 
       {/* Archives Overlay Panel */}
       {isArchivesOpen && (
@@ -235,6 +252,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
         displayName={displayName}
         onNameChange={setDisplayName}
       />
+      
+      {isTimerOpen && <PomodoroTimer onClose={() => setIsTimerOpen(false)} />}
     </>
   );
 }
