@@ -62,6 +62,11 @@ export function NeuralInterface() {
 
   const { addElement, updateElement, addConnection } = useCanvas();
   const { playClick, playConfirm, speak } = useSfx();
+
+  // DEBUG: Log messages whenever they change
+  useEffect(() => {
+    console.log("[NeuralInterface] Messages updated:", JSON.stringify(messages, null, 2));
+  }, [messages]);
   
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -160,7 +165,10 @@ export function NeuralInterface() {
                                 : 'self-start bg-[#eca013]/10 text-[#eca013] border border-[#eca013]/20'
                             }`}
                         >
-                            {(m as any).content}
+                            {/* Render content - handle both direct content and parts array */}
+                            {(m as any).content || 
+                             (m as any).parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') ||
+                             ''}
                             
                             {/* Render Tool Invocations */}
                             {(m as any).toolInvocations?.map((toolInv: any, toolIndex: number) => (
