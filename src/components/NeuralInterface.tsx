@@ -10,16 +10,14 @@ export function NeuralInterface() {
   const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
   const { playClick, playConfirm, speak } = useSfx();
 
-  // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
-  const { messages, sendMessage, isLoading, addToolResult, error } = useChat({
+  const { messages, sendMessage, isLoading, addToolResult, error } = (useChat as any)({
     body: {
       canvasElements: activeCanvas?.elements || []
     },
-    onError: (err) => {
+    onError: (err: any) => {
         console.error("AI Chat Error:", err);
     },
-    onToolCall: async ({ toolCall }) => {
-      // @ts-ignore
+    onToolCall: async ({ toolCall }: any) => {
       const { toolName, input } = toolCall;
       const args: any = input;
       let result = "Done";
@@ -60,7 +58,6 @@ export function NeuralInterface() {
           result = "Connection established.";
       }
 
-      // @ts-ignore
       addToolResult({ toolCallId: toolCall.toolCallId, result });
     },
   });
@@ -74,8 +71,7 @@ export function NeuralInterface() {
   // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // @ts-ignore
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true; // Keep listening
@@ -98,7 +94,6 @@ export function NeuralInterface() {
           const transcript = event.results[event.results.length - 1][0].transcript;
           console.log("[NeuralInterface] Transcript:", transcript);
           if (transcript.trim()) {
-            // @ts-ignore
             sendMessage({ role: 'user', content: transcript });
             playConfirm();
           }
@@ -183,7 +178,7 @@ export function NeuralInterface() {
                         </div>
                     )}
 
-                    {messages.map((m, i) => (
+                    {messages.map((m: any, i: number) => (
                         <motion.div 
                             key={i}
                             initial={{ opacity: 0, x: m.role === 'user' ? 10 : -10 }}
@@ -238,7 +233,6 @@ export function NeuralInterface() {
                         onSubmit={(e) => { 
                             e.preventDefault(); 
                             if (!inputInternal.trim()) return;
-                            // @ts-ignore
                             sendMessage({ role: 'user', content: inputInternal }); 
                             setInputInternal(""); 
                         }}
@@ -268,7 +262,7 @@ export function NeuralInterface() {
       {/* Floating Avatar Trigger */}
       <motion.button
          drag
-         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Lock drag for now or allow free? Let's just fixed pos
+         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
          onClick={() => setIsOpen(!isOpen)}
          className="fixed bottom-6 right-6 z-[130] group"
          whileHover={{ scale: 1.1 }}
