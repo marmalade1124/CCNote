@@ -1527,7 +1527,7 @@ export function CanvasEditor() {
                                              </ReactMarkdown>
                                         </div>
                                     )
-                                    )
+
                                 )}
                             </div>
                             
