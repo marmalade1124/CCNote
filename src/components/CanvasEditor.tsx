@@ -323,13 +323,50 @@ export function CanvasEditor() {
       } else {
           console.warn('Line index out of bounds');
       }
+  const toggleCardCheckboxByIndex = (elementId: string, checkboxIndex: number) => {
+      // Use localContent if available
+      const currentContent = localContent[elementId] ?? activeCanvas?.elements.find(e => e.id === elementId)?.content;
+      if (!currentContent) return;
+      
+      const cardData = parseCardContent(currentContent);
+      const lines = cardData.description.split('\n');
+      
+      // Find all lines that look like a checkbox
+      // Matches: start of line (or whitespace), then dash/star/plus, then space, then [ ] or [x] or [X]
+      let matchCount = -1;
+      let targetLineIndex = -1;
+      
+      for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          // Check for checkbox pattern
+          if (/^\s*[-*+]\s+\[[ xX]\]/.test(line)) {
+              matchCount++;
+              if (matchCount === checkboxIndex) {
+                  targetLineIndex = i;
+                  break;
+              }
+          }
+      }
+      
+      if (targetLineIndex !== -1) {
+          const line = lines[targetLineIndex];
+          let newLine = line;
+          
+          if (line.includes('[ ]')) {
+              newLine = line.replace('[ ]', '[x]');
+          } else if (line.includes('[x]')) {
+              newLine = line.replace('[x]', '[ ]');
+          } else if (line.includes('[X]')) {
+             newLine = line.replace('[X]', '[ ]');
+          }
+          
+          if (newLine !== line) {
+              lines[targetLineIndex] = newLine;
+              const newDesc = lines.join('\n');
+              handleContentChange(elementId, serializeCardContent(cardData.title, newDesc));
+          }
+      }
   };
-
-  const handleInputKeyDown = (
-      e: React.KeyboardEvent, 
-      elementId: string, 
-      currentContent: string, 
-      setContent: (s: string) => void,
       fieldType: 'plain' | 'card_desc' | 'image_caption' | 'image_title' | 'card_title' = 'plain'
   ) => {
        playTyping(); // Play sound on every key press in inputs
@@ -1478,12 +1515,15 @@ export function CanvasEditor() {
                                                                         onChange={() => {}} 
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            console.log('Checkbox clicked', { node });
-                                                                            if (node?.position?.start?.line) {
-                                                                                console.log('Toggling line:', node.position.start.line - 1);
-                                                                                toggleCardCheckbox(element.id, node.position.start.line - 1);
-                                                                            } else {
-                                                                                console.warn('No line position found for checkbox');
+                                                                            // Robust Fallback: Find our index in the DOM
+                                                                            const container = (e.currentTarget as HTMLElement).closest('.markdown-preview');
+                                                                            if (container) {
+                                                                                const inputs = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+                                                                                const myIndex = inputs.indexOf(e.currentTarget);
+                                                                                if (myIndex !== -1) {
+                                                                                    toggleCardCheckboxByIndex(element.id, myIndex);
+                                                                                    return;
+                                                                                }
                                                                             }
                                                                         }}
                                                                         onMouseDown={(e) => e.stopPropagation()}
