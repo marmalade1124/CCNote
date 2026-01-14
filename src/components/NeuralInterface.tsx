@@ -9,7 +9,7 @@ import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
   const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
-  const { playClick, playConfirm, speak } = useSfx();
+  const { playClick, playConfirm, speak, playRobotBeep } = useSfx();
 
   const { messages, sendMessage, isLoading, addToolResult, error } = (useChat as any)({
     body: {
@@ -372,7 +372,7 @@ export function NeuralInterface() {
       {/* Settings Gear Button */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-10 right-20 z-[125] p-1 text-[#39ff14]/30 hover:text-[#39ff14] transition-colors"
+        className="fixed bottom-10 right-20 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
         style={{
           transform: `translate(${-robotPosition.x}px, ${robotPosition.y}px)`
         }}
@@ -389,6 +389,7 @@ export function NeuralInterface() {
         isOpen={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         onMotivate={(msg) => speak(msg)}
+        onBeep={playRobotBeep}
         position={robotPosition}
         onPositionChange={setRobotPosition}
       />

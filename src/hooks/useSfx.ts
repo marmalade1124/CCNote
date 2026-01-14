@@ -327,5 +327,36 @@ export const useSfx = () => {
         osc2.stop(now + 0.4);
     }, [initAudio]);
 
-    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playUngroup, playTrash };
+    // Cute robot beep - single chirp
+    const playRobotBeep = useCallback(() => {
+        initAudio();
+        if (!audioCtx.current) return;
+        const ctx = audioCtx.current;
+        const now = ctx.currentTime;
+        
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        // Random cute beep frequency (higher = cuter)
+        const freq = 600 + Math.random() * 800; // 600-1400 Hz
+        const duration = 0.05 + Math.random() * 0.1; // 50-150ms
+        
+        osc.type = Math.random() > 0.5 ? 'sine' : 'square';
+        osc.frequency.setValueAtTime(freq, now);
+        
+        // Cute pitch slide
+        const slide = (Math.random() - 0.5) * 300;
+        osc.frequency.linearRampToValueAtTime(freq + slide, now + duration);
+        
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(now);
+        osc.stop(now + duration);
+    }, [initAudio]);
+
+    return { playClick, playHover, playConfirm, playConnect, playTyping, playError, playBoot, playPowerDown, speak, playMerge, playUngroup, playTrash, playRobotBeep };
 };

@@ -9,6 +9,7 @@ interface EmoRobotProps {
   isOpen: boolean;
   onClick: () => void;
   onMotivate?: (message: string) => void;
+  onBeep?: () => void;
   position: { x: number; y: number };
   onPositionChange: (pos: { x: number; y: number }) => void;
 }
@@ -28,7 +29,7 @@ const MOTIVATIONAL_MESSAGES = [
   "Your ideas matter!",
 ];
 
-export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, position, onPositionChange }: EmoRobotProps) {
+export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, onBeep, position, onPositionChange }: EmoRobotProps) {
   const [expression, setExpression] = useState<EmoExpression>('idle');
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
@@ -93,6 +94,11 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
     const interval = setInterval(() => {
       const rand = Math.random();
       
+      // Random beep (30% chance every 5 seconds)
+      if (rand < 0.3) {
+        onBeep?.();
+      }
+      
       // Random expression
       if (rand < 0.1) {
         setExpression('wink');
@@ -102,17 +108,17 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 200);
       }
       
-      // Random motivational message (5% chance every 10 seconds)
+      // Random motivational message (5% chance every 5 seconds)
       if (rand < 0.05 && !speechBubble) {
         const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
         setSpeechBubble(msg);
         onMotivate?.(msg);
         setTimeout(() => setSpeechBubble(null), 4000);
       }
-    }, 10000);
+    }, 5000); // Every 5 seconds
     
     return () => clearInterval(interval);
-  }, [isListening, isLoading, isOpen, speechBubble, onMotivate]);
+  }, [isListening, isLoading, isOpen, speechBubble, onMotivate, onBeep]);
 
   // Eye styles based on expression
   const getEyeStyle = (isLeft: boolean) => {
