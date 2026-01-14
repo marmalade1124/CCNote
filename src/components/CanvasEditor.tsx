@@ -120,6 +120,7 @@ export function CanvasEditor() {
   const dragElementRef = useRef<string | null>(null);
   const dragStartPosRef = useRef<{x: number, y: number} | null>(null); // Element Original World Pos
   const dragStartMouseRef = useRef<{x: number, y: number} | null>(null); // Mouse Original Screen Pos
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start (Mouse - Offset)
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
