@@ -6,6 +6,7 @@ import { useCanvas } from "@/context/CanvasContext";
 import { ProfileModal } from "./ProfileModal";
 import { PomodoroTimer } from "./PomodoroTimer";
 import { TypingDefenseGame } from "./TypingDefenseGame";
+import { GraphView } from "./GraphView";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSfx } from "@/hooks/useSfx";
 
@@ -15,6 +16,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
+  const [isGraphOpen, setIsGraphOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -88,6 +90,16 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
 
         {/* Right: Clock & User */}
         <div className="flex items-center gap-4">
+             {/* Graph View Toggle */}
+             <button
+                onClick={() => { playClick(); setIsGraphOpen(true); }}
+                onMouseEnter={playHover}
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                title="View Data Constellation"
+             >
+                <span className="material-symbols-outlined text-[18px]">hub</span>
+             </button>
+
              {/* Game Toggle */}
              <button
                 onClick={() => { playClick(); setIsGameOpen(true); }}
@@ -142,104 +154,105 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
       {/* Archives Overlay Panel */}
       {isArchivesOpen && (
           <div className="fixed top-16 left-6 w-80 bg-[#0a0b10]/95 border border-[#eca013]/40 rounded-lg shadow-[0_4px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(236,160,19,0.1)] z-40 backdrop-blur-xl flex flex-col max-h-[calc(100vh-100px)] animate-in slide-in-from-top-2 duration-200">
+              <div className="p-4 border-b border-[#eca013]/20 flex items-center justify-between">
+                  <h2 className="text-[#eca013] font-bold tracking-widest text-xs uppercase">Data_Archives</h2>
+                  <div className="flex gap-2">
+                       <button 
+                          onClick={() => { playClick(); setIsCreating(true); }}
+                          className="text-[#eca013] hover:text-[#39ff14] transition-colors"
+                          title="New Databank"
+                       >
+                           <span className="material-symbols-outlined text-lg">add_circle</span>
+                       </button>
+                  </div>
+              </div>
               
-              {/* Panel Header */}
-              <div className="p-3 border-b border-[#eca013]/20 flex items-center justify-between bg-[#eca013]/5">
-                  <span className="text-[#eca013] text-[10px] font-bold tracking-[0.2em] uppercase">File_System</span>
-                  <div className="flex gap-1">
-                      <div className="size-2 rounded-full bg-red-500/50"></div>
-                      <div className="size-2 rounded-full bg-yellow-500/50"></div>
-                      <div className="size-2 rounded-full bg-green-500/50"></div>
-                  </div>
-              </div>
-
-              {/* Create New */}
-              <div className="p-3 border-b border-[#eca013]/10">
-                {isCreating ? (
-                  <div className="space-y-2">
-                    <input
-                      className="w-full px-3 py-1.5 bg-[#0a0b10] border border-[#eca013]/40 rounded text-[#eca013] text-xs focus:border-[#eca013] outline-none font-mono placeholder-[#eca013]/30"
-                      placeholder="ENTER_FILENAME..."
-                      value={newCanvasName}
-                      onChange={(e) => setNewCanvasName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                      autoFocus
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={handleCreate} className="flex-1 py-1 bg-[#eca013] text-[#0a0b10] text-[10px] font-bold hover:opacity-90 tactile-btn uppercase">Create</button>
-                      <button onClick={() => setIsCreating(false)} className="px-3 py-1 bg-[#1a160f] border border-[#eca013]/30 text-[#eca013] text-[10px] font-bold hover:bg-[#eca013]/10 tactile-btn uppercase">X</button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsCreating(true)}
-                    className="w-full flex items-center justify-center gap-2 bg-[#eca013]/10 text-[#eca013] py-1.5 rounded border border-[#eca013]/20 border-dashed hover:bg-[#eca013]/20 hover:border-[#eca013] text-xs font-bold tracking-widest uppercase transition-all"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    New_Record
-                  </button>
-                )}
-              </div>
-
-              {/* List */}
-              <div className="overflow-y-auto p-2 custom-scrollbar flex-1 min-h-[200px]">
-                {isLoading ? (
-                  <div className="py-8 text-center text-[#eca013]/50 font-mono text-[10px] animate-pulse">&gt; READING_DISK...</div>
-                ) : sortedCanvases.length === 0 ? (
-                  <div className="py-8 text-center text-[#eca013]/30 font-mono text-[10px]">&gt; DRIVE_EMPTY</div>
-                ) : (
-                  <div className="space-y-1">
-                    {sortedCanvases.map((canvas) => (
-                      <div
-                        key={canvas.id}
-                        className={`group flex items-center gap-2 px-2 py-2 rounded cursor-pointer transition-all border ${
-                          activeCanvasId === canvas.id
-                            ? "bg-[#eca013]/10 border-[#eca013] text-[#eca013]"
-                            : "bg-transparent border-transparent hover:border-[#eca013]/20 text-[#eca013]/70 hover:text-[#eca013] hover:bg-[#eca013]/5"
-                        }`}
-                        onClick={() => setActiveCanvas(canvas.id)}
-                      >
-                         <span className="material-symbols-outlined text-[16px] opacity-70">description</span>
-                        
-                        {editingId === canvas.id ? (
+              <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {isCreating && (
+                      <div className="p-2 animate-in fade-in slide-in-from-top-2">
                           <input
-                            className="flex-1 min-w-0 bg-[#0a0b10] border border-[#eca013] rounded text-xs outline-none text-[#eca013] font-mono px-1"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleRename(canvas.id);
-                              if (e.key === "Escape") setEditingId(null);
-                            }}
-                            onBlur={() => handleRename(canvas.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            autoFocus
+                              autoFocus
+                              type="text"
+                              placeholder="ARCHIVE_NAME..."
+                              className="w-full bg-[#eca013]/5 border border-[#eca013]/50 rounded px-2 py-1 text-xs text-[#eca013] placeholder-[#eca013]/30 outline-none"
+                              value={newCanvasName}
+                              onChange={(e) => setNewCanvasName(e.target.value)}
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleCreate();
+                                  if (e.key === 'Escape') setIsCreating(false);
+                              }}
+                              onBlur={() => setIsCreating(false)}
                           />
-                        ) : (
-                          <div className="flex-1 flex flex-col overflow-hidden">
-                             <span className="text-xs font-bold truncate uppercase tracking-tight">{canvas.name}</span>
-                             <span className="text-[8px] font-mono text-[#eca013]/30 leading-none">SIZE: {Math.floor(Math.random() * 500) + 100}KB</span>
-                          </div>
-                        )}
-
-                        <div className="hidden group-hover:flex items-center gap-1 opacity-60">
-                          <button onClick={(e) => { e.stopPropagation(); startEditing(canvas.id, canvas.name); }} className="hover:text-white"><span className="material-symbols-outlined text-[14px]">edit</span></button>
-                          <button onClick={async (e) => { e.stopPropagation(); if(confirm("Delete?")) await deleteCanvas(canvas.id); }} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">delete</span></button>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                  )}
+
+                  {sortedCanvases.map(canvas => (
+                      <div 
+                          key={canvas.id}
+                          className={`group flex items-center justify-between p-2 rounded cursor-pointer border transition-all ${
+                              activeCanvasId === canvas.id 
+                              ? "bg-[#eca013]/10 border-[#eca013]/40 shadow-[0_0_10px_rgba(236,160,19,0.1)]" 
+                              : "border-transparent hover:bg-[#eca013]/5 hover:border-[#eca013]/20"
+                          }`}
+                          onClick={() => {
+                              playClick();
+                              setActiveCanvas(canvas.id);
+                              // Optional: close archives on selection?
+                              // setIsArchivesOpen(false); 
+                          }}
+                      >
+                          {editingId === canvas.id ? (
+                              <input
+                                  autoFocus
+                                  type="text"
+                                  className="w-full bg-transparent border-b border-[#eca013] text-xs text-[#eca013] outline-none"
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRename(canvas.id);
+                                      if (e.key === 'Escape') setEditingId(null);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onBlur={() => handleRename(canvas.id)}
+                              />
+                          ) : (
+                              <div className="flex flex-col">
+                                  <span className={`text-xs font-bold tracking-wider ${activeCanvasId === canvas.id ? "text-[#eca013]" : "text-[#eca013]/70"}`}>
+                                      {canvas.name}
+                                  </span>
+                                  <span className="text-[9px] text-[#eca013]/40 font-mono">
+                                      {new Date(canvas.updatedAt).toLocaleDateString()}
+                                  </span>
+                              </div>
+                          )}
+
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      playClick();
+                                      startEditing(canvas.id, canvas.name);
+                                  }}
+                                  className="p-1 hover:text-[#39ff14] text-[#eca013]/50 transition-colors"
+                              >
+                                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                              </button>
+                              <button
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      playClick();
+                                      if(confirm("Confirm deletion of this archive?")) deleteCanvas(canvas.id);
+                                  }}
+                                  className="p-1 hover:text-red-500 text-[#eca013]/50 transition-colors"
+                              >
+                                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                              </button>
+                          </div>
+                      </div>
+                  ))}
               </div>
-              
-              {/* Footer */}
-              <div className="p-2 border-t border-[#eca013]/20 bg-[#0a0b10]">
-                 <div className="flex items-center justify-between text-[9px] text-[#eca013]/40 font-mono">
-                    <span>USED: 48%</span>
-                    <span>FREE: 512GB</span>
-                 </div>
-                 <div className="w-full h-1 bg-[#eca013]/10 mt-1 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#eca013] w-[48%]"></div>
-                 </div>
+
+              <div className="p-3 border-t border-[#eca013]/20 bg-[#0a0b10]/50 backdrop-blur-sm">
                  <button 
                     onClick={() => {
                         playClick();
@@ -273,6 +286,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
           />
       )}
       {isGameOpen && <TypingDefenseGame onClose={() => setIsGameOpen(false)} />}
+      {isGraphOpen && <GraphView onClose={() => setIsGraphOpen(false)} />}
     </>
   );
 }
