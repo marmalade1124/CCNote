@@ -9,9 +9,10 @@ import { useSfx } from "@/hooks/useSfx";
 export function NeuralInterface() {
   // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
   const { messages, input, setInput, append, isLoading, addToolResult } = useChat({
-    maxSteps: 5,
     onToolCall: async ({ toolCall }) => {
-      const { toolName, args } = toolCall as { toolName: string; args: any };
+      // @ts-ignore
+      const { toolName, input } = toolCall;
+      const args: any = input;
       let result = "Done";
 
       if (toolName === "createNode") {
@@ -119,7 +120,7 @@ export function NeuralInterface() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mb-4 bg-[#0a0b10] border border-[#eca013]/50 p-3 rounded-lg shadow-[0_0_15px_rgba(236,160,19,0.2)] text-[#eca013] text-xs relative max-h-40 overflow-y-auto custom-scrollbar"
                     >
-                        {latestMessage.content}
+                        {(latestMessage as any).content}
                         <div className="absolute bottom-0 right-2 text-[8px] opacity-50">AI_CORE_V.2</div>
                     </motion.div>
                 )}

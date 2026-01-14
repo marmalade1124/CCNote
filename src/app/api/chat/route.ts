@@ -22,34 +22,34 @@ export async function POST(req: Request) {
     tools: {
       createNode: tool({
         description: 'Create a new note or folder on the canvas',
-        parameters: z.object({
+        inputSchema: z.object({
           content: z.string().describe('The text content of the note'),
           type: z.enum(['text', 'folder', 'image']).describe('The type of element'),
           x: z.number().optional().describe('X position (default to center if unknown)'),
           y: z.number().optional().describe('Y position'),
           color: z.string().optional().describe('Hex color code'),
         }),
-        execute: async () => ({}) // Client-side execution
+        outputSchema: z.object({}),
       }),
       updateNode: tool({
         description: 'Update the content or properties of an existing node',
-        parameters: z.object({
+        inputSchema: z.object({
             id: z.string().describe('The ID of the node to update. If not provided, ask the user to select one or clarify.'),
             content: z.string().optional(),
             color: z.string().optional(),
         }),
-        execute: async () => ({})
+        outputSchema: z.object({}),
       }),
       createConnection: tool({
           description: 'Connect two nodes typically by their context or IDs',
-          parameters: z.object({
+          inputSchema: z.object({
               fromId: z.string(),
               toId: z.string(),
           }),
-          execute: async () => ({})
+          outputSchema: z.object({}),
       })
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }
