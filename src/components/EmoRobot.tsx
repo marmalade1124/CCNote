@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface EmoRobotProps {
   isListening: boolean;
@@ -10,12 +10,16 @@ interface EmoRobotProps {
   onClick: () => void;
   onMotivate?: (message: string) => void;
   onBeep?: () => void;
+  onHappyBeep?: () => void;
+  onExcitedBeep?: () => void;
+  onCuriousBeep?: () => void;
+  onSadBeep?: () => void;
   position: { x: number; y: number };
   onPositionChange: (pos: { x: number; y: number }) => void;
   onGiggle?: () => void;
 }
 
-type EmoExpression = 'idle' | 'happy' | 'thinking' | 'listening' | 'wink' | 'sleepy' | 'sad' | 'giggle';
+type EmoExpression = 'idle' | 'happy' | 'thinking' | 'listening' | 'wink' | 'sleepy' | 'sad' | 'giggle' | 'excited' | 'curious';
 
 const MOTIVATIONAL_MESSAGES = [
   // Encouraging
@@ -71,51 +75,108 @@ const MOTIVATIONAL_MESSAGES = [
   "Best team ever!",
 ];
 
-export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, onBeep, position, onPositionChange, onGiggle }: EmoRobotProps) {
+export function EmoRobot({ 
+  isListening, isLoading, isOpen, onClick, onMotivate, onBeep, 
+  position, onPositionChange, onGiggle,
+  onHappyBeep, onExcitedBeep, onCuriousBeep, onSadBeep
+}: EmoRobotProps) {
   const [expression, setExpression] = useState<EmoExpression>('idle');
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
+  const [pupilSize, setPupilSize] = useState(1);
+  const [blinkState, setBlinkState] = useState(false);
   const robotRef = useRef<HTMLDivElement>(null);
   const hoverCountRef = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wanderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Determine expression based on state
   useEffect(() => {
     if (isListening) {
       setExpression('listening');
+      setPupilSize(1.2);
     } else if (isLoading) {
       setExpression('thinking');
+      setPupilSize(0.8);
     } else if (isOpen) {
       setExpression('happy');
+      setPupilSize(1.1);
     } else {
       setExpression('idle');
+      setPupilSize(1);
     }
   }, [isListening, isLoading, isOpen]);
 
-  // Track cursor with eyes (throttled)
+  // Natural blinking
+  useEffect(() => {
+    const blinkInterval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        setBlinkState(true);
+        setTimeout(() => setBlinkState(false), 150);
+      }
+    }, 2000);
+    return () => clearInterval(blinkInterval);
+  }, []);
+
+  // Autonomous wandering when idle
+  useEffect(() => {
+    if (isListening || isLoading || isOpen) {
+      if (wanderTimeoutRef.current) clearTimeout(wanderTimeoutRef.current);
+      return;
+    }
+
+    const wander = () => {
+      // Random small movement (±100px from center)
+      const newX = (Math.random() - 0.5) * 200;
+      const newY = (Math.random() - 0.5) * 100;
+      
+      onPositionChange({ x: newX, y: newY });
+      
+      // Play curious beep sometimes when wandering
+      if (Math.random() < 0.3) {
+        onCuriousBeep?.();
+        setExpression('curious');
+        setTimeout(() => setExpression('idle'), 800);
+      }
+      
+      // Schedule next wander (8-15 seconds)
+      wanderTimeoutRef.current = setTimeout(wander, 8000 + Math.random() * 7000);
+    };
+
+    // Start wandering after 5 seconds of idle
+    wanderTimeoutRef.current = setTimeout(wander, 5000);
+    
+    return () => {
+      if (wanderTimeoutRef.current) clearTimeout(wanderTimeoutRef.current);
+    };
+  }, [isListening, isLoading, isOpen, onPositionChange, onCuriousBeep]);
+
+  // Track cursor with eyes (throttled with smooth following)
   useEffect(() => {
     let animationFrame: number;
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (!robotRef.current || isListening || isLoading) return;
+      if (!robotRef.current) return;
       
       const robot = robotRef.current.getBoundingClientRect();
       const robotCenterX = robot.left + robot.width / 2;
       const robotCenterY = robot.top + robot.height / 2;
       
-      // Calculate offset (max 4px)
       const dx = e.clientX - robotCenterX;
       const dy = e.clientY - robotCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const maxOffset = 4;
+      const maxOffset = 5;
       
-      if (distance > 50) { // Only track if cursor is far enough
-        setEyeOffset({
-          x: Math.max(-maxOffset, Math.min(maxOffset, dx / 50)),
-          y: Math.max(-maxOffset, Math.min(maxOffset, dy / 50)),
-        });
+      if (distance > 30) {
+        setEyeOffset(prev => ({
+          x: prev.x + (Math.max(-maxOffset, Math.min(maxOffset, dx / 40)) - prev.x) * 0.2,
+          y: prev.y + (Math.max(-maxOffset, Math.min(maxOffset, dy / 40)) - prev.y) * 0.2,
+        }));
       } else {
-        setEyeOffset({ x: 0, y: 0 });
+        setEyeOffset(prev => ({
+          x: prev.x * 0.9,
+          y: prev.y * 0.9,
+        }));
       }
     };
     
@@ -129,18 +190,37 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
       window.removeEventListener('mousemove', throttledHandler);
       cancelAnimationFrame(animationFrame);
     };
-  }, [isListening, isLoading]);
+  }, []);
 
-  // Random expressions and motivational messages
+  // Random expressions, beeps, and motivational messages
   useEffect(() => {
     if (isListening || isLoading) return;
     
     const interval = setInterval(() => {
       const rand = Math.random();
       
-      // Random beep (40% chance every 3 seconds)
+      // Mood-matched beeps (40% chance)
       if (rand < 0.4) {
-        onBeep?.();
+        const mood = Math.random();
+        if (mood < 0.4) {
+          onBeep?.(); // Normal beep
+        } else if (mood < 0.6) {
+          onHappyBeep?.();
+          setExpression('happy');
+          setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 500);
+        } else if (mood < 0.8) {
+          onExcitedBeep?.();
+          setExpression('excited');
+          setPupilSize(1.3);
+          setTimeout(() => {
+            setExpression(isOpen ? 'happy' : 'idle');
+            setPupilSize(1);
+          }, 600);
+        } else {
+          onCuriousBeep?.();
+          setExpression('curious');
+          setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 500);
+        }
       }
       
       // Random expression (20% chance)
@@ -152,28 +232,25 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 200);
       }
       
-      // Random motivational message (20% chance every 3 seconds)
+      // Random motivational message (20% chance)
       if (rand < 0.2 && !speechBubble) {
         const msg = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
         setSpeechBubble(msg);
         onMotivate?.(msg);
+        onHappyBeep?.();
         setTimeout(() => setSpeechBubble(null), 4000);
       }
-    }, 3000); // Every 3 seconds
+    }, 3000);
     
     return () => clearInterval(interval);
-  }, [isListening, isLoading, isOpen, speechBubble, onMotivate, onBeep]);
+  }, [isListening, isLoading, isOpen, speechBubble, onMotivate, onBeep, onHappyBeep, onExcitedBeep, onCuriousBeep]);
 
   // Handle rapid hover for giggle
   const handleMouseEnter = () => {
     hoverCountRef.current += 1;
     
-    // Clear existing timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     
-    // If 4+ hovers in quick succession, giggle!
     if (hoverCountRef.current >= 4) {
       setExpression('giggle');
       onGiggle?.();
@@ -181,23 +258,28 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
       setTimeout(() => setExpression(isOpen ? 'happy' : 'idle'), 500);
     }
     
-    // Reset hover count after 1.5 seconds of no hovering
     hoverTimeoutRef.current = setTimeout(() => {
       hoverCountRef.current = 0;
     }, 1500);
   };
 
-  // Eye styles based on expression
-  const getEyeStyle = (isLeft: boolean) => {
-    const base = { width: '14px', height: '18px', borderRadius: '3px' };
+  // Fluid eye styles based on expression
+  const getEyeStyle = useCallback((isLeft: boolean) => {
+    const base = { 
+      width: '14px', 
+      height: blinkState ? '2px' : '18px', 
+      borderRadius: '3px',
+      transform: '',
+      transition: 'all 0.15s ease-out',
+    };
     
     switch (expression) {
       case 'happy':
-        return { ...base, clipPath: 'polygon(0 30%, 100% 30%, 80% 100%, 20% 100%)', height: '12px' };
+        return { ...base, clipPath: 'polygon(0 30%, 100% 30%, 80% 100%, 20% 100%)', height: blinkState ? '2px' : '12px' };
       case 'listening':
-        return { ...base, transform: 'scaleY(1.15)' };
+        return { ...base, transform: `scaleY(1.15) scaleX(${pupilSize})` };
       case 'thinking':
-        return { ...base, transform: isLeft ? 'rotate(-12deg) translateY(-2px)' : 'rotate(12deg) translateY(-2px)' };
+        return { ...base, transform: isLeft ? 'rotate(-12deg) translateY(-2px)' : 'rotate(12deg) translateY(-2px)', height: blinkState ? '2px' : '14px' };
       case 'wink':
         return isLeft ? { ...base, height: '3px', transform: 'translateY(8px)' } : base;
       case 'sleepy':
@@ -206,10 +288,14 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         return { ...base, transform: 'rotate(10deg) translateY(2px)' };
       case 'giggle':
         return { ...base, transform: 'scaleX(1.2) scaleY(0.8)' };
+      case 'excited':
+        return { ...base, transform: `scale(${pupilSize})`, height: blinkState ? '2px' : '20px' };
+      case 'curious':
+        return { ...base, transform: isLeft ? 'rotate(-8deg) scale(1.1)' : 'rotate(8deg) scale(0.9)' };
       default:
-        return { ...base, transform: '' };
+        return base;
     }
-  };
+  }, [expression, blinkState, pupilSize]);
 
   const eyeColor = isListening ? 'bg-red-400' : isLoading ? 'bg-yellow-400' : 'bg-[#39ff14]';
   const glowColor = isListening ? 'shadow-[0_0_12px_rgba(248,113,113,0.8)]' : 
@@ -227,7 +313,8 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         onPositionChange({ x: position.x + info.offset.x, y: position.y + info.offset.y });
       }}
       className="fixed bottom-6 right-6 z-[130] cursor-grab active:cursor-grabbing"
-      style={{ x: position.x, y: position.y }}
+      animate={{ x: position.x, y: position.y }}
+      transition={{ type: "spring", stiffness: 100, damping: 15 }}
     >
       {/* Speech Bubble */}
       <AnimatePresence>
@@ -239,7 +326,6 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
             className="absolute -top-16 left-1/2 -translate-x-1/2 bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg px-3 py-2 text-[10px] text-[#39ff14] whitespace-nowrap shadow-[0_0_15px_rgba(57,255,20,0.2)]"
           >
             {speechBubble}
-            {/* Bubble Arrow */}
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-[#39ff14]/50" />
           </motion.div>
         )}
@@ -252,11 +338,11 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         whileTap={{ scale: 0.95 }}
         animate={{
           y: isListening ? [0, -2, 0, 2, 0] : [0, -3, 0],
-          rotate: isListening ? [-1.5, 1.5, -1.5] : 0,
+          rotate: isListening ? [-1.5, 1.5, -1.5] : expression === 'giggle' ? [-3, 3, -3, 3, 0] : 0,
         }}
         transition={{
           y: { duration: isListening ? 0.2 : 2.5, repeat: Infinity, ease: "easeInOut" },
-          rotate: { duration: 0.12, repeat: Infinity },
+          rotate: { duration: expression === 'giggle' ? 0.1 : 0.12, repeat: expression === 'giggle' ? 3 : Infinity },
         }}
         className="relative"
       >
@@ -282,7 +368,7 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
               className={`${eyeColor} ${glowColor}`}
               style={{
                 ...getEyeStyle(true),
-                transform: `${getEyeStyle(true).transform || ''} translateX(${eyeOffset.x}px) translateY(${eyeOffset.y}px)`,
+                transform: `${getEyeStyle(true).transform} translateX(${eyeOffset.x}px) translateY(${eyeOffset.y}px)`,
               }}
               animate={isListening ? { opacity: [1, 0.4, 1] } : {}}
               transition={{ duration: 0.4, repeat: Infinity }}
@@ -293,7 +379,7 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
               className={`${eyeColor} ${glowColor}`}
               style={{
                 ...getEyeStyle(false),
-                transform: `${getEyeStyle(false).transform || ''} translateX(${eyeOffset.x}px) translateY(${eyeOffset.y}px)`,
+                transform: `${getEyeStyle(false).transform} translateX(${eyeOffset.x}px) translateY(${eyeOffset.y}px)`,
               }}
               animate={isListening ? { opacity: [1, 0.4, 1] } : {}}
               transition={{ duration: 0.4, repeat: Infinity, delay: 0.2 }}
@@ -310,15 +396,13 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, 
         {/* Listening Waves */}
         <AnimatePresence>
           {isListening && (
-            <>
-              <motion.div 
-                className="absolute inset-0 border-2 border-red-400/30 rounded-xl"
-                initial={{ scale: 1, opacity: 0.6 }}
-                animate={{ scale: 1.5, opacity: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1, repeat: Infinity }}
-              />
-            </>
+            <motion.div 
+              className="absolute inset-0 border-2 border-red-400/30 rounded-xl"
+              initial={{ scale: 1, opacity: 0.6 }}
+              animate={{ scale: 1.5, opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
           )}
         </AnimatePresence>
       </motion.button>
