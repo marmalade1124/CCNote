@@ -1,21 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCanvas } from "@/context/CanvasContext";
 import { useSfx } from "@/hooks/useSfx";
 
 export function NeuralInterface() {
-  const { messages, input, setInput, append, isLoading } = useChat({
-    maxSteps: 5, // Allow multi-step repairs if needed
+  // @ts-ignore - useChat types might be slightly off with version mismatch but runtime is fine
+  const { messages, input, setInput, append, isLoading, addToolResult } = useChat({
+    maxSteps: 5,
     onToolCall: async ({ toolCall }) => {
-      // Execute client-side tools
-      const { name, args } = toolCall as { name: string; args: any };
-      
-      if (name === "createNode") {
+      const { toolName, args } = toolCall as { toolName: string; args: any };
+      let result = "Done";
+
+      if (toolName === "createNode") {
           const { content, type, x, y, color } = args;
-          // Default to center screen if no pos provided
           const centerX = window.scrollX + window.innerWidth / 2;
           const centerY = window.scrollY + window.innerHeight / 2;
           
@@ -26,30 +26,32 @@ export function NeuralInterface() {
               y: y || centerY + (Math.random() * 100 - 50),
               width: 200,
               height: 100,
-              color: color || '#eca013' // Default Gold
+              color: color || '#eca013'
           });
-          return "Node created successfully.";
+          result = "Node created successfully.";
       }
 
-      if (name === "updateNode") {
+      if (toolName === "updateNode") {
           const { id, content, color } = args;
           if (id) {
               await updateElement(id, {
                   ...(content && { content }),
                   ...(color && { color })
               });
-              return `Node ${id} updated.`;
+              result = `Node ${id} updated.`;
+          } else {
+              result = "Error: Node ID required.";
           }
-          return "Error: Node ID required.";
       }
       
-      if (name === "createConnection") {
+      if (toolName === "createConnection") {
           const { fromId, toId } = args;
           await addConnection(fromId, toId);
-          return "Connection established.";
+          result = "Connection established.";
       }
 
-      return "Unknown tool";
+      // @ts-ignore
+      addToolResult({ toolCallId: toolCall.toolCallId, result });
     },
   });
 

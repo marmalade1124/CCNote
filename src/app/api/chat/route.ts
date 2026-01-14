@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { convertToCoreMessages, streamText } from 'ai';
+import { streamText } from 'ai';
 import { z } from 'zod';
 
 export const maxDuration = 30;
@@ -9,7 +9,10 @@ export async function POST(req: Request) {
 
   const result = await streamText({
     model: openai('gpt-4o'),
-    messages: convertToCoreMessages(messages),
+    messages: messages.map((m: any) => ({
+        role: m.role,
+        content: m.content,
+    })),
     system: `You are the Neural Interface for CCNote, a cyberpunk collaborative canvas.
     You are a helpful, efficient AI operator.
     You can manipulate the canvas using the provided tools.
