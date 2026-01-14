@@ -9,6 +9,8 @@ interface EmoRobotProps {
   isOpen: boolean;
   onClick: () => void;
   onMotivate?: (message: string) => void;
+  position: { x: number; y: number };
+  onPositionChange: (pos: { x: number; y: number }) => void;
 }
 
 type EmoExpression = 'idle' | 'happy' | 'thinking' | 'listening' | 'wink' | 'sleepy' | 'sad';
@@ -26,13 +28,11 @@ const MOTIVATIONAL_MESSAGES = [
   "Your ideas matter!",
 ];
 
-export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate }: EmoRobotProps) {
+export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate, position, onPositionChange }: EmoRobotProps) {
   const [expression, setExpression] = useState<EmoExpression>('idle');
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
   const [speechBubble, setSpeechBubble] = useState<string | null>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const robotRef = useRef<HTMLDivElement>(null);
-  const dragControls = useDragControls();
 
   // Determine expression based on state
   useEffect(() => {
@@ -149,7 +149,7 @@ export function EmoRobot({ isListening, isLoading, isOpen, onClick, onMotivate }
       dragMomentum={false}
       dragElastic={0.1}
       onDragEnd={(_, info) => {
-        setPosition({ x: position.x + info.offset.x, y: position.y + info.offset.y });
+        onPositionChange({ x: position.x + info.offset.x, y: position.y + info.offset.y });
       }}
       className="fixed bottom-6 right-6 z-[130] cursor-grab active:cursor-grabbing"
       style={{ x: position.x, y: position.y }}

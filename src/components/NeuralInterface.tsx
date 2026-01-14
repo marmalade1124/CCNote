@@ -72,6 +72,7 @@ export function NeuralInterface() {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState<string>('');
   const [showMicSettings, setShowMicSettings] = useState(false);
+  const [robotPosition, setRobotPosition] = useState({ x: 0, y: 0 });
 
   // Enumerate available microphones
   useEffect(() => {
@@ -224,7 +225,11 @@ export function NeuralInterface() {
                 initial={{ x: 300, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 300, opacity: 0 }}
-                className="fixed bottom-20 right-6 w-80 z-[120] font-mono"
+                className="fixed w-80 z-[120] font-mono"
+                style={{ 
+                  bottom: `calc(5rem - ${robotPosition.y}px)`,
+                  right: `calc(1.5rem - ${robotPosition.x}px)`
+                }}
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
@@ -367,7 +372,10 @@ export function NeuralInterface() {
       {/* Settings Gear Button */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-10 right-20 z-[125] p-1 rounded-full bg-[#0a0b10]/60 border border-[#39ff14]/20 text-[#39ff14]/40 hover:text-[#39ff14] hover:border-[#39ff14]/50 transition-colors"
+        className="fixed bottom-10 right-20 z-[125] p-1 text-[#39ff14]/30 hover:text-[#39ff14] transition-colors"
+        style={{
+          transform: `translate(${-robotPosition.x}px, ${robotPosition.y}px)`
+        }}
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -381,6 +389,8 @@ export function NeuralInterface() {
         isOpen={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         onMotivate={(msg) => speak(msg)}
+        position={robotPosition}
+        onPositionChange={setRobotPosition}
       />
     </>
   );
