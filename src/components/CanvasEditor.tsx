@@ -672,41 +672,80 @@ export function CanvasEditor() {
     return localContent[element.id] ?? element.content;
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (file.size > 5 * 1024 * 1024) { 
-          alert("Image is too large (Max 5MB).");
+      // Optional: limit to 50MB just as a sanity check, though Supabase handles large files
+      if (file.size > 50 * 1024 * 1024) { 
+          alert("Image is too large (Max 50MB).");
           return;
       }
 
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-          const result = event.target?.result as string;
-          if (result && activeCanvas) {
+      if (!activeCanvas?.id || !supabase) {
+          alert("Storage not configured or Canvas not active.");
+          return;
+      }
+
+      try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `${activeCanvas.id}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+              .from('images')
+              .upload(filePath, file);
+
+          if (uploadError) {
+              console.error('Upload error:', uploadError);
+              alert('Failed to upload image: ' + uploadError.message);
+              return;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+              .from('images')
+              .getPublicUrl(filePath);
+
+          if (publicUrl && activeCanvas) {
               const rect = canvasEl!.getBoundingClientRect();
-              // Center logic with Zoom: WorldCenter = (ScreenCenter - Offset) / Zoom
               const screenCenterX = rect.width / 2;
               const screenCenterY = rect.height / 2;
               
               const worldX = (screenCenterX - viewOffset.x) / zoom;
               const worldY = (screenCenterY - viewOffset.y) / zoom;
               
-              await addElement({
-                  type: 'image',
-                  x: worldX - 150, // Center the 300px wide image
-                  y: worldY - 175,
-                  width: 300,
-                  height: 350,
-                  content: serializeImageContent(result, "Uploaded Image", "Description..."),
-                  rotation: 0
-              });
+              const img = new Image();
+              img.src = publicUrl;
+              img.onload = async () => {
+                   // Scale down giant images to reasonable initial node size while keeping aspect ratio
+                   const MAX_INITIAL_WIDTH = 500;
+                   let width = img.width;
+                   let height = img.height;
+                   
+                   if (width > MAX_INITIAL_WIDTH) {
+                       const ratio = MAX_INITIAL_WIDTH / width;
+                       width = MAX_INITIAL_WIDTH;
+                       height = height * ratio;
+                   }
+
+                   await addElement({
+                      type: 'image',
+                      x: worldX - (width / 2),
+                      y: worldY - (height / 2),
+                      width: width,
+                      height: height,
+                      content: serializeImageContent(publicUrl, "Uploaded Image", "Description..."),
+                      rotation: 0
+                  });
+              };
               
               if (fileInputRef.current) fileInputRef.current.value = "";
           }
-      };
-      reader.readAsDataURL(file);
+
+      } catch (err) {
+          console.error('Unexpected error uploading:', err);
+          alert("An error occurred during upload.");
+      }
   };
 
   const reorganizeLayout = async (folder: CanvasElement, currentChildren: CanvasElement[], collapsedOverride?: boolean) => {
