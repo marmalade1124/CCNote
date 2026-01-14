@@ -162,7 +162,7 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
                  type="number" 
                  value={customTime}
                  onChange={(e) => setCustomTime(parseInt(e.target.value) || 0)}
-                 className="flex-1 bg-[#0a0b10] border border-[#eca013]/30 rounded text-[#eca013] px-3 py-1 text-xs font-mono focus:border-[#eca013] focus:outline-none"
+                 className="flex-1 bg-[#0a0b10] border border-[#eca013]/30 rounded text-[#eca013] px-3 py-1 text-xs font-mono focus:border-[#eca013] focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button 
                 onClick={applyCustomTime}
