@@ -65,15 +65,11 @@ export function NeuralInterface() {
     },
   });
 
-  // DEBUG: Log messages whenever they change
-  useEffect(() => {
-    console.log("[NeuralInterface] Messages updated:", JSON.stringify(messages, null, 2));
-  }, [messages]);
-  
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [inputInternal, setInputInternal] = useState("");
   const recognitionRef = useRef<any>(null);
+  const spokenMessageIds = useRef<Set<string>>(new Set());
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -82,25 +78,35 @@ export function NeuralInterface() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true; // Keep listening
         recognition.interimResults = false;
         recognition.lang = "en-US";
         
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
+        recognition.onstart = () => {
+          console.log("[NeuralInterface] Speech recognition started");
+          setIsListening(true);
+        };
+        recognition.onend = () => {
+          console.log("[NeuralInterface] Speech recognition ended");
+          setIsListening(false);
+        };
+        recognition.onerror = (event: any) => {
+          console.error("[NeuralInterface] Speech recognition error:", event.error);
+          setIsListening(false);
+        };
         recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInputInternal(transcript);
-          // Auto-send after voice
-          setTimeout(() => {
-              // @ts-ignore
-              sendMessage({ role: 'user', content: transcript });
-              setInputInternal("");
-              playConfirm();
-          }, 500);
+          const transcript = event.results[event.results.length - 1][0].transcript;
+          console.log("[NeuralInterface] Transcript:", transcript);
+          if (transcript.trim()) {
+            // @ts-ignore
+            sendMessage({ role: 'user', content: transcript });
+            playConfirm();
+          }
         };
         
         recognitionRef.current = recognition;
+      } else {
+        console.warn("[NeuralInterface] Speech recognition not supported");
       }
     }
   }, [sendMessage, playConfirm]);
@@ -108,13 +114,34 @@ export function NeuralInterface() {
   // TTS and Auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Helper to extract text content from a message
+  const getMessageText = (m: any): string => {
+    if (m.content) return m.content;
+    if (m.parts) {
+      return m.parts
+        .filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('');
+    }
+    return '';
+  };
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     
-    // Speak latest assistant message
+    // Speak latest assistant message (only once per message)
     const latest = messages[messages.length - 1];
-    if (latest && latest.role === 'assistant') {
-        speak((latest as any).content);
+    if (latest && latest.role === 'assistant' && (latest as any).id) {
+        const messageId = (latest as any).id;
+        // Check if streaming is done (parts has state: 'done')
+        const parts = (latest as any).parts;
+        const isStreamingDone = parts?.some((p: any) => p.state === 'done');
+        
+        if (isStreamingDone && !spokenMessageIds.current.has(messageId)) {
+            spokenMessageIds.current.add(messageId);
+            const text = getMessageText(latest);
+            if (text) speak(text);
+        }
     }
   }, [messages, speak]);
 
