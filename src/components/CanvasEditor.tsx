@@ -323,6 +323,8 @@ export function CanvasEditor() {
       } else {
           console.warn('Line index out of bounds');
       }
+  };
+
   const toggleCardCheckboxByIndex = (elementId: string, checkboxIndex: number) => {
       // Use localContent if available
       const currentContent = localContent[elementId] ?? activeCanvas?.elements.find(e => e.id === elementId)?.content;
