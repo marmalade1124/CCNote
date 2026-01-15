@@ -1529,7 +1529,7 @@ export function CanvasEditor() {
             
             {/* Quick Capture Button */}
             <button 
-                title="QUICK CAPTURE (/ or ALT+N)"
+                title="QUICK CAPTURE (ALT+N)"
                 className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent text-[#eca013] hover:bg-[#eca013]/10 hover:border-[#eca013]/50"
                 onMouseEnter={playHover}
                 onClick={(e) => { 

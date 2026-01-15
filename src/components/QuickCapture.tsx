@@ -142,14 +142,34 @@ export function QuickCapture({ isOpen, onClose, onSubmit }: QuickCaptureProps) {
               {/* Body */}
               <div className="p-6">
                 {mode === 'text' ? (
-                  <textarea
-                    ref={inputRef}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type your note... (Press '/' or ALT+N to open)"
-                    className="w-full h-40 bg-[#0a0b10] border-2 border-[#eca013]/30 rounded p-4 text-[#eca013] font-mono resize-none focus:outline-none focus:border-[#eca013] focus:shadow-[0_0_20px_rgba(236,160,19,0.2)] transition-all"
-                  />
+                  <div className="space-y-3">
+                    <textarea
+                      ref={inputRef}
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="First line = Title\nRest = Description (press Enter for new line)"
+                      className="w-full h-40 bg-[#0a0b10] border-2 border-[#eca013]/30 rounded p-4 text-[#eca013] font-mono resize-none focus:outline-none focus:border-[#eca013] focus:shadow-[0_0_20px_rgba(236,160,19,0.2)] transition-all"
+                    />
+                    
+                    {/* Preview of what card will look like */}
+                    {content && (
+                      <div className="bg-[#0a0b10]/80 border border-[#eca013]/20 rounded p-3">
+                        <div className="text-[10px] text-[#eca013]/50 uppercase tracking-wider mb-2">Preview:</div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 border-b border-[#eca013]/20 pb-2">
+                            <span className="text-[10px] bg-[#eca013]/20 text-[#eca013] px-2 py-0.5 rounded border border-[#eca013]/30">TITLE</span>
+                            <span className="text-[#eca013] font-bold text-sm">
+                              {content.split('\n')[0] || 'New Note'}
+                            </span>
+                          </div>
+                          <div className="text-[#eca013]/70 text-xs font-mono">
+                            {content.split('\n').slice(1).join('\n') || 'No description'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="h-40 flex flex-col items-center justify-center gap-4">
                     <button
@@ -181,7 +201,7 @@ export function QuickCapture({ isOpen, onClose, onSubmit }: QuickCaptureProps) {
               {/* Footer */}
               <div className="bg-[#0a0b10] border-t-2 border-[#eca013]/30 px-6 py-4 flex items-center justify-between">
                 <p className="text-xs text-[#eca013]/50 font-mono">
-                  ESC to cancel • Hotkeys: / or ALT+N
+                  ESC to cancel • Hotkey: ALT+N
                 </p>
                 
                 <div className="flex gap-3">

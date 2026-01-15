@@ -16,18 +16,7 @@ export default function DashboardPage() {
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const router = useRouter();
 
-  // Global hotkeys for Quick Capture
-  // Using '/' key (like Notion) - works everywhere including canvas
-  useHotkeys('/', (e) => {
-    e.preventDefault();
-    setShowQuickCapture(true);
-  }, {  
-    enableOnFormTags: false,
-    enableOnContentEditable: true, // Allow on canvas contentEditable elements
-    preventDefault: true
-  });
-  
-  // Alternative: ALT+N for users who prefer keyboard combos
+  // Quick Capture: ALT+N (removed '/' due to conflicts)
   useHotkeys('alt+n', (e) => {
     e.preventDefault();
     setShowQuickCapture(true);
