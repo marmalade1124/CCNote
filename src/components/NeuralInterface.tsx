@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCanvas } from "@/context/CanvasContext";
 import { useSfx } from "@/hooks/useSfx";
 import { useCanvasKnowledge } from "@/hooks/useCanvasKnowledge";
+import { useSmartLinks } from "@/hooks/useSmartLinks";
 import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
@@ -65,6 +66,8 @@ export function NeuralInterface() {
       addToolResult({ toolCallId: toolCall.toolCallId, result });
     },
   });
+  // Initialize Smart Links (Local AI)
+  useSmartLinks();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -136,6 +139,18 @@ export function NeuralInterface() {
         recognition.onerror = (event: any) => {
           console.error("[NeuralInterface] Speech recognition error:", event.error);
           
+          if (event.error === 'aborted' || event.error === 'not-allowed') {
+            setIsListening(false);
+            shouldListenRef.current = false;
+          }
+          
+          if (event.error === 'network') {
+               console.error("[NeuralInterface] Network error - check your internet connection.");
+               shouldListenRef.current = false; 
+               setIsListening(false);
+          }
+          // 'no-speech' is common in continuous mode, we just let it restart via onend
+        };
           // Stop on critical errors
           if (event.error === 'aborted' || event.error === 'not-allowed' || event.error === 'network') {
             setIsListening(false);
@@ -159,6 +174,34 @@ export function NeuralInterface() {
           
           if (result.isFinal) {
             console.log("[NeuralInterface] Final transcript:", transcript);
+            const lowerTranscript = transcript.toLowerCase().trim();
+
+            // Voice Command Check: "Beepo"
+            if (lowerTranscript.startsWith("beepo")) {
+                const command = lowerTranscript.replace(/^beepo\s*/, "").trim();
+                console.log("[Voice Command]", command);
+                
+                if (command.includes("zoom in")) {
+                    window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomIn' } }));
+                    speak("Zooming in.");
+                } else if (command.includes("zoom out")) {
+                    window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomOut' } }));
+                    speak("Zooming out.");
+                } else if (command.startsWith("create note") || command.startsWith("create a note")) {
+                    const content = command.replace(/create (a )?note/, "").trim();
+                    if (content) {
+                        window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'createNode', content } }));
+                        speak(`Creating note: ${content}`);
+                    } else {
+                        speak("What should the note say?");
+                    }
+                } else {
+                    speak("Command not recognized.");
+                }
+                setInputInternal(""); // Clear input
+                return; // Don't send to chat
+            }
+
             if (transcript.trim()) {
               sendMessage({ role: 'user', content: transcript });
               setInputInternal(""); // Clear after sending

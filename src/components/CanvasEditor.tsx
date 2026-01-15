@@ -7,6 +7,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useSfx } from "@/hooks/useSfx";
 import { Radar } from "./Radar";
 import { ConfirmModal } from "./ConfirmModal";
+import { SmartLinkPanel } from "./SmartLinkPanel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -653,8 +654,8 @@ export function CanvasEditor() {
   }), [activeCanvas?.elements]);
 
   // Search Navigation Listener
+  // Search Navigation & Voice Command Listener
   useEffect(() => {
-     // ... (existing listener)
      const handlePanTo = (e: Event) => {
           const detail = (e as CustomEvent).detail;
           if (canvasEl) {
@@ -669,9 +670,45 @@ export function CanvasEditor() {
                setViewOffset(newOffset);
           }
       };
+
+      const handleAction = (e: Event) => {
+          const detail = (e as CustomEvent).detail;
+          if (!detail) return;
+          
+          if (detail.type === 'zoomIn') {
+             setZoom(z => Math.min(z * 1.2, 5));
+          } else if (detail.type === 'zoomOut') {
+             setZoom(z => Math.max(z / 1.2, 0.1));
+          } else if (detail.type === 'createNode') {
+             const vw = window.innerWidth;
+             const vh = window.innerHeight;
+             const z = zoomRef.current;
+             const vo = viewOffsetRef.current;
+             
+             // Center of viewport
+             const cx = (-vo.x + vw/2) / z;
+             const cy = (-vo.y + vh/2) / z;
+             
+             addElement({
+                type: 'text',
+                content: detail.content || 'New Note',
+                x: cx - 100,
+                y: cy - 50,
+                width: 200,
+                height: 100,
+                color: '#eca013'
+             });
+             playConfirm();
+          }
+      };
+
       window.addEventListener('canvas:pan-to', handlePanTo);
-      return () => window.removeEventListener('canvas:pan-to', handlePanTo);
-  }, []);
+      window.addEventListener('canvas-action', handleAction);
+      return () => {
+          window.removeEventListener('canvas:pan-to', handlePanTo);
+          window.removeEventListener('canvas-action', handleAction);
+      };
+  }, [canvasEl, addElement, playConfirm]);
 
   const getElementContent = (element: CanvasElement) => {
     return localContent[element.id] ?? element.content;
@@ -1811,6 +1848,8 @@ export function CanvasEditor() {
         }}
         onCancel={() => setPendingDeleteConnection(null)}
       />
+
+      <SmartLinkPanel nodeId={selectedElement} />
     </div>
   );
 }
