@@ -216,50 +216,32 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - WITH DEBUG LOGGING
+  // Hover detection for wiki links - OPTIMIZED (no logs)
   useEffect(() => {
-    console.log('[HOVER] Setting up hover detection listener...');
-    
     const handleMouseMove = (e: MouseEvent) => {
       // Clear existing timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
       
-      // Look for canvas elements - they're divs, not contentEditable!
+      // Look for ANY element with [[wiki links]]
       const target = e.target as HTMLElement;
-      
-      // Try to find a div that contains note content
-      // Look for common patterns: divs with text content that might have [[links]]
       let noteElement: HTMLElement | null = target;
       let attempts = 0;
-      const maxAttempts = 5; // Don't traverse too far up
+      const maxAttempts = 10; // Increased to search more levels
       
       while (noteElement && attempts < maxAttempts) {
         const textContent = noteElement.textContent || '';
         
-        console.log('[HOVER] Checking element:', {
-          tag: noteElement.tagName,
-          className: noteElement.className,
-          hasWikiLinks: textContent.includes('[['),
-          textPreview: textContent.substring(0, 80)
-        });
-        
         // Check if this element contains [[wiki links]]
         if (textContent.includes('[[') && textContent.includes(']]')) {
-          console.log('[HOVER] Found element with wiki links!');
-          
-          // Find ALL [[wiki links]]
           const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
-          console.log('[HOVER] Found', linkMatches.length, 'wiki link(s):', linkMatches.map(m => m[1]));
           
           if (linkMatches.length > 0) {
             const firstLink = linkMatches[0][1];
-            console.log('[HOVER] Setting timeout to show preview for:', firstLink);
             
             // Show preview after delay
             hoverTimeoutRef.current = setTimeout(() => {
-              console.log('[HOVER] SHOWING PREVIEW for:', firstLink);
               setHoveredLink({
                 text: firstLink,
                 position: { x: e.clientX + 20, y: e.clientY + 20 }
@@ -274,8 +256,6 @@ export function CanvasEditor() {
         attempts++;
       }
       
-      console.log('[HOVER] No wiki links found after checking', attempts, 'parent levels');
-      
       // No links found, clear preview
       hoverTimeoutRef.current = setTimeout(() => {
         setHoveredLink(null);
@@ -283,7 +263,6 @@ export function CanvasEditor() {
     };
     
     const handleMouseLeave = () => {
-      console.log('[HOVER] Mouse left window, clearing');
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
@@ -292,10 +271,8 @@ export function CanvasEditor() {
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
-    console.log('[HOVER] Listeners attached to window');
     
     return () => {
-      console.log('[HOVER] Cleaning up listeners');
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
       if (hoverTimeoutRef.current) {
