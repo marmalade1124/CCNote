@@ -243,7 +243,7 @@ export function CanvasEditor() {
       if (attempts === 0) {
         console.log('[HOVER] Starting search from:', {
           tag: target.tagName,
-          classes: target.className?.substring(0, 50),
+          classes: String(target.className || '').substring(0, 50),
           text: target.textContent?.substring(0, 50)
         });
       }
