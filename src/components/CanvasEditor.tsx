@@ -226,45 +226,58 @@ export function CanvasEditor() {
         clearTimeout(hoverTimeoutRef.current);
       }
       
-      // Check if hovering over contentEditable element
+      // Look for canvas elements - they're divs, not contentEditable!
       const target = e.target as HTMLElement;
-      const contentEditableEl = target.closest('[contenteditable="true"]');
       
-      console.log('[HOVER] Mouse move:', {
-        targetTag: target.tagName,
-        hasContentEditable: !!contentEditableEl,
-        textContent: contentEditableEl?.textContent?.substring(0, 50)
-      });
+      // Try to find a div that contains note content
+      // Look for common patterns: divs with text content that might have [[links]]
+      let noteElement: HTMLElement | null = target;
+      let attempts = 0;
+      const maxAttempts = 5; // Don't traverse too far up
       
-      if (contentEditableEl) {
-        const textContent = contentEditableEl.textContent || '';
-        console.log('[HOVER] Found contentEditable, checking for links in:', textContent.substring(0, 100));
+      while (noteElement && attempts < maxAttempts) {
+        const textContent = noteElement.textContent || '';
         
-        // Find ALL [[wiki links]]
-        const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
-        console.log('[HOVER] Found', linkMatches.length, 'wiki link(s):', linkMatches.map(m => m[1]));
+        console.log('[HOVER] Checking element:', {
+          tag: noteElement.tagName,
+          className: noteElement.className,
+          hasWikiLinks: textContent.includes('[['),
+          textPreview: textContent.substring(0, 80)
+        });
         
-        if (linkMatches.length > 0) {
-          const firstLink = linkMatches[0][1];
-          console.log('[HOVER] Setting timeout to show preview for:', firstLink);
+        // Check if this element contains [[wiki links]]
+        if (textContent.includes('[[') && textContent.includes(']]')) {
+          console.log('[HOVER] Found element with wiki links!');
           
-          // Show preview after delay
-          hoverTimeoutRef.current = setTimeout(() => {
-            console.log('[HOVER] SHOWING PREVIEW for:', firstLink);
-            setHoveredLink({
-              text: firstLink,
-              position: { x: e.clientX + 20, y: e.clientY + 20 }
-            });
-          }, 300);
-          return;
-        } else {
-          console.log('[HOVER] No wiki links found in this element');
+          // Find ALL [[wiki links]]
+          const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
+          console.log('[HOVER] Found', linkMatches.length, 'wiki link(s):', linkMatches.map(m => m[1]));
+          
+          if (linkMatches.length > 0) {
+            const firstLink = linkMatches[0][1];
+            console.log('[HOVER] Setting timeout to show preview for:', firstLink);
+            
+            // Show preview after delay
+            hoverTimeoutRef.current = setTimeout(() => {
+              console.log('[HOVER] SHOWING PREVIEW for:', firstLink);
+              setHoveredLink({
+                text: firstLink,
+                position: { x: e.clientX + 20, y: e.clientY + 20 }
+              });
+            }, 300);
+            return;
+          }
         }
+        
+        // Move up to parent
+        noteElement = noteElement.parentElement;
+        attempts++;
       }
+      
+      console.log('[HOVER] No wiki links found after checking', attempts, 'parent levels');
       
       // No links found, clear preview
       hoverTimeoutRef.current = setTimeout(() => {
-        console.log('[HOVER] Clearing hover state (no links)');
         setHoveredLink(null);
       }, 100);
     };
