@@ -118,7 +118,10 @@ export function EmoRobot({
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Autonomous wandering when idle
+  // Autonomous wandering when idle (only if user hasn't dragged recently)
+  const userDraggedRef = useRef(false);
+  const lastDragTimeRef = useRef(0);
+  
   useEffect(() => {
     if (isListening || isLoading || isOpen) {
       if (wanderTimeoutRef.current) clearTimeout(wanderTimeoutRef.current);
@@ -126,9 +129,21 @@ export function EmoRobot({
     }
 
     const wander = () => {
-      // Random small movement (±100px from center)
-      const newX = (Math.random() - 0.5) * 200;
-      const newY = (Math.random() - 0.5) * 100;
+      // Don't wander if user dragged within last 30 seconds
+      if (Date.now() - lastDragTimeRef.current < 30000) {
+        wanderTimeoutRef.current = setTimeout(wander, 5000);
+        return;
+      }
+      
+      // Get safe bounds (keep robot visible on screen)
+      // Robot is fixed to bottom-right, so negative X/Y moves it left/up
+      const maxX = 150;  // Max pixels to move left
+      const minX = -50;  // Max pixels to move right (limited by screen edge)
+      const maxY = 100;  // Max pixels to move up  
+      const minY = -30;  // Max pixels to move down (limited by screen edge)
+      
+      const newX = minX + Math.random() * (maxX - minX);
+      const newY = minY + Math.random() * (maxY - minY);
       
       onPositionChange({ x: newX, y: newY });
       
@@ -139,17 +154,17 @@ export function EmoRobot({
         setTimeout(() => setExpression('idle'), 800);
       }
       
-      // Schedule next wander (8-15 seconds)
-      wanderTimeoutRef.current = setTimeout(wander, 8000 + Math.random() * 7000);
+      // Schedule next wander (15-25 seconds - less frequent)
+      wanderTimeoutRef.current = setTimeout(wander, 15000 + Math.random() * 10000);
     };
 
-    // Start wandering after 5 seconds of idle
-    wanderTimeoutRef.current = setTimeout(wander, 5000);
+    // Start wandering after 10 seconds of idle
+    wanderTimeoutRef.current = setTimeout(wander, 10000);
     
     return () => {
       if (wanderTimeoutRef.current) clearTimeout(wanderTimeoutRef.current);
     };
-  }, [isListening, isLoading, isOpen, onPositionChange, onCuriousBeep]);
+  }, [isListening, isLoading, isOpen, onCuriousBeep]); // Removed onPositionChange to prevent re-triggering
 
   // Track cursor with eyes (throttled with smooth following)
   useEffect(() => {
@@ -310,7 +325,20 @@ export function EmoRobot({
       dragMomentum={false}
       dragElastic={0.1}
       onDragEnd={(_, info) => {
-        onPositionChange({ x: position.x + info.offset.x, y: position.y + info.offset.y });
+        // Mark that user dragged (prevents wandering for 30s)
+        lastDragTimeRef.current = Date.now();
+        
+        // Calculate new position with bounds clamping
+        let newX = position.x + info.offset.x;
+        let newY = position.y + info.offset.y;
+        
+        // Clamp to safe bounds (prevent going off screen)
+        // Positive X = moves left, Negative X = moves right (off screen)
+        // Positive Y = moves up, Negative Y = moves down (off screen)
+        newX = Math.max(-100, Math.min(300, newX));  // -100 to 300 pixels horizontal
+        newY = Math.max(-100, Math.min(200, newY));  // -100 to 200 pixels vertical
+        
+        onPositionChange({ x: newX, y: newY });
       }}
       className="fixed bottom-6 right-6 z-[130] cursor-grab active:cursor-grabbing"
       animate={{ x: position.x, y: position.y }}
