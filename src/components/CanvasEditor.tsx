@@ -216,12 +216,15 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - WITH THROTTLE
+  // Hover detection for wiki links - FIXED (no cursor follow)
   useEffect(() => {
     let lastCallTime = 0;
-    const throttleMs = 50; // Only process mousemove every 50ms
+    const throttleMs = 100; // Increased to 100ms for better performance
     
     const handleMouseMove = (e: MouseEvent) => {
+      // Skip if preview is already showing (prevent cursor following!)
+      if (hoveredLink) return;
+      
       // Throttle: Skip if called too recently
       const now = Date.now();
       if (now - lastCallTime < throttleMs) return;
@@ -236,17 +239,8 @@ export function CanvasEditor() {
       const target = e.target as HTMLElement;
       let noteElement: HTMLElement | null = target;
       let attempts = 0;
-      const maxAttempts = 20; // Even more!
+      const maxAttempts = 20;
       let foundLink = false;
-      
-      // Debug: Log first element
-      if (attempts === 0) {
-        console.log('[HOVER] Starting search from:', {
-          tag: target.tagName,
-          classes: String(target.className || '').substring(0, 50),
-          text: target.textContent?.substring(0, 50)
-        });
-      }
       
       while (noteElement && attempts < maxAttempts) {
         const textContent = noteElement.textContent || '';
@@ -259,30 +253,22 @@ export function CanvasEditor() {
             foundLink = true;
             const firstLink = linkMatches[0][1];
             
-            console.log('[HOVER] Found link at level', attempts, ':', firstLink);
-            
-            // Show preview after delay
+            // Show preview after delay - position is LOCKED here!
             hoverTimeoutRef.current = setTimeout(() => {
               setHoveredLink({
                 text: firstLink,
                 position: { x: e.clientX + 20, y: e.clientY + 20 }
               });
             }, 300);
-            return; // Exit early
+            return;
           }
         }
         
-        // Move up to parent
         noteElement = noteElement.parentElement;
         attempts++;
       }
       
-      // Debug if we didn't find anything
-      if (!foundLink) {
-        console.log('[HOVER] No links found after', attempts, 'levels');
-      }
-      
-      // Clear preview immediately if no links
+      // Clear preview if no links found
       if (!foundLink) {
         setHoveredLink(null);
       }
@@ -305,7 +291,7 @@ export function CanvasEditor() {
         clearTimeout(hoverTimeoutRef.current);
       }
     };
-  }, []);
+  }, [hoveredLink]); // Add dependency so it knows when preview is showing
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
