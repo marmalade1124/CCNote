@@ -18,11 +18,27 @@
 
 ### 🧠 Neural Interface (AI Assistant)
 
-An AI-powered chat companion that can help you:
+An AI-powered chat companion ("Beepo") that can help you:
 
-- Create and manipulate nodes on the canvas via natural language
-- Answer questions and provide assistance
-- Execute canvas operations through voice or text commands
+#### ⚡ Local Knowledge (Works Offline / AI Toggle OFF)
+
+- **Navigation**: "Zoom in", "Zoom out", "Reset view"
+- **Creation**: "Create note [text]" (or typed directly)
+- **Stats**: "How many notes?", "How many connections?"
+- **Pathfinding**: "Path from [Start] to [End]" (Finds shortest path)
+- **Orphan Detection**: "Show orphans" (Finds unconnected nodes)
+- **Tag Aggregation**: "List tags", "Show items with #todo"
+- **Type Filtering**: "List images", "Show sticky notes"
+- **Search**: "Find [keyword]", "Where is [topic]?"
+- **Connections**: "What is connected to [Node Name]?"
+
+#### ☁️ Cloud Intelligence (AI Toggle ON)
+
+- **Deep Analysis**: Complex reasoning about your canvas content.
+- **Creative Writing**: Generating stories, code, or ideas based on your notes.
+- **General Knowledge**: Answering broad questions beyond your local data.
+
+---
 
 ### 🎨 Infinite Canvas Editor
 
