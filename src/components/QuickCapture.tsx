@@ -147,7 +147,7 @@ export function QuickCapture({ isOpen, onClose, onSubmit }: QuickCaptureProps) {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type your note... (Ctrl+Enter to submit)"
+                    placeholder="Type your note... (Press '/' or ALT+N to open)"
                     className="w-full h-40 bg-[#0a0b10] border-2 border-[#eca013]/30 rounded p-4 text-[#eca013] font-mono resize-none focus:outline-none focus:border-[#eca013] focus:shadow-[0_0_20px_rgba(236,160,19,0.2)] transition-all"
                   />
                 ) : (
@@ -181,7 +181,7 @@ export function QuickCapture({ isOpen, onClose, onSubmit }: QuickCaptureProps) {
               {/* Footer */}
               <div className="bg-[#0a0b10] border-t-2 border-[#eca013]/30 px-6 py-4 flex items-center justify-between">
                 <p className="text-xs text-[#eca013]/50 font-mono">
-                  ESC to cancel {mode === 'text' && '• CTRL+ENTER to submit'}
+                  ESC to cancel • Hotkeys: / or ALT+N
                 </p>
                 
                 <div className="flex gap-3">

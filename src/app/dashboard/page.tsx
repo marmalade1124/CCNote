@@ -16,8 +16,15 @@ export default function DashboardPage() {
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const router = useRouter();
 
-  // Global hotkey for Quick Capture
-  useHotkeys('mod+n', (e) => {
+  // Global hotkeys for Quick Capture
+  // Using '/' key (like Notion) - no browser conflict
+  useHotkeys('/', (e) => {
+    e.preventDefault();
+    setShowQuickCapture(true);
+  }, { enableOnFormTags: false }); // Don't trigger in input fields
+  
+  // Alternative: ALT+N for users who prefer keyboard combos
+  useHotkeys('alt+n', (e) => {
     e.preventDefault();
     setShowQuickCapture(true);
   }, { enableOnFormTags: true });
