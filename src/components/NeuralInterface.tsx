@@ -168,7 +168,7 @@ export function NeuralInterface() {
 
             // Fuzzy Wake Word Check: "Beepo", "People", "Repo", "Deep oh", "Bepo"
             // We strip the wake word to get the command.
-            const wakeWordRegex = /^(beepo|people|bepo|repo|deep oh|depot)\b\s*/i;
+            const wakeWordRegex = /^(beepo|people|bepo|repo|deep oh|depot|bebo|bpo|depo|bibo|peepo)\b\s*/i;
             const match = lowerTranscript.match(wakeWordRegex);
 
             if (match) {
@@ -198,7 +198,7 @@ export function NeuralInterface() {
 - "Beepo **Zoom In**"
 - "Beepo **Zoom Out**"
 - "Beepo **Create Note [Text]**"
-*(Also responds to: 'People', 'Bepo', 'Repo')*` 
+*(Also responds to: 'Bebo', 'Depo', 'People', 'BPO')*` 
                     });
                 } else {
                     speak("Command not recognized.");
