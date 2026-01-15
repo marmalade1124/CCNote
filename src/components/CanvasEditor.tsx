@@ -8,6 +8,7 @@ import { useSfx } from "@/hooks/useSfx";
 import { Radar } from "./Radar";
 import { ConfirmModal } from "./ConfirmModal";
 import { SmartLinkPanel } from "./SmartLinkPanel";
+import { HologramPreview } from "./HologramPreview";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -184,6 +185,10 @@ export function CanvasEditor() {
   const [focusMode, setFocusMode] = useState(false);
   const [focusedElementId, setFocusedElementId] = useState<string | null>(null);
   
+  // Holographic hover preview state
+  const [hoveredLink, setHoveredLink] = useState<{text: string, position: {x: number, y: number}} | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
   // Focus Mode Hotkeys (after state declarations)
@@ -210,6 +215,64 @@ export function CanvasEditor() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
+  
+  // Hover detection for wiki links
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      // Clear existing timeout
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      
+      // Check if hovering over text that contains [[wiki links]]
+      const target = e.target as HTMLElement;
+      const isContentEditable = target.closest('[contenteditable="true"]');
+      
+      if (isContentEditable) {
+        const textContent = isContentEditable.textContent || '';
+        const linkRegex = /\[\[([^\]]+)\]\]/g;
+        let match;
+        
+        while ((match = linkRegex.exec(textContent)) !== null) {
+          const linkText = match[1];
+          // Simple check: if we're hovering near text containing [[, show preview
+          // This is a simplified version - for production, you'd want more precise detection
+          if (textContent.includes(`[[${linkText}]]`)) {
+            hoverTimeoutRef.current = setTimeout(() => {
+              setHoveredLink({
+                text: linkText,
+                position: { x: e.clientX + 20, y: e.clientY + 20 }
+              });
+            }, 300); // 300ms delay
+            return;
+          }
+        }
+      }
+      
+      // If not hovering over a link, clear after delay
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredLink(null);
+      }, 100);
+    };
+    
+    const handleMouseLeave = () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      setHoveredLink(null);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
@@ -2021,6 +2084,38 @@ export function CanvasEditor() {
             })()}
           </div>
         </div>
+      )}
+      
+      {/* Holographic Hover Preview */}
+      {hoveredLink && (
+        <HologramPreview
+          linkText={hoveredLink.text}
+          position={hoveredLink.position}
+          onNavigate={() => {
+            // Find and navigate to the linked element
+            const targetElement = activeCanvas.elements.find(el => {
+              if (el.type === 'card' && el.content.startsWith(hoveredLink.text + '||')) return true;
+              if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(hoveredLink.text) || el.content === hoveredLink.text)) return true;
+              if (el.type === 'folder') {
+                try {
+                  const parsed = JSON.parse(el.content);
+                  return parsed.title === hoveredLink.text;
+                } catch { return false; }
+              }
+              return false;
+            });
+            
+            if (targetElement) {
+              // Pan to element
+              window.dispatchEvent(new CustomEvent('canvas:pan-to', {
+                detail: { x: targetElement.x, y: targetElement.y, zoom: 1.2 }
+              }));
+              setSelectedElement(targetElement.id);
+              playConfirm();
+            }
+            setHoveredLink(null);
+          }}
+        />
       )}
     </div>
   );
