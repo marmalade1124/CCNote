@@ -6,6 +6,7 @@ import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSfx } from "@/hooks/useSfx";
 import { Radar } from "./Radar";
+import { ConfirmModal } from "./ConfirmModal";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -124,6 +125,7 @@ export function CanvasEditor() {
   const panStartRef = useRef<{x: number, y: number} | null>(null); // Ref for pan start (Mouse - Offset)
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [pendingDeleteConnection, setPendingDeleteConnection] = useState<string | null>(null);
 
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
@@ -1439,7 +1441,7 @@ export function CanvasEditor() {
                     const sPos = getElementCenter(start);
                     const ePos = getElementCenter(end);
                     return (
-                      <g key={conn.id} className="cursor-pointer connection-group" onClick={(e) => { e.stopPropagation(); if (confirm('Delete this connection?')) { deleteConnection(conn.id); playTrash(); } }}>
+                      <g key={conn.id} className="cursor-pointer connection-group" onClick={(e) => { e.stopPropagation(); setPendingDeleteConnection(conn.id); }}>
                         <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="transparent" strokeWidth="12"/>
                         <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="#eca013" strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5" className="connection-line"/>
                         <text x={(sPos.x + ePos.x) / 2} y={(sPos.y + ePos.y) / 2 - 8} fill="#ff5555" fontSize="10" textAnchor="middle" className="connection-delete-text pointer-events-none" fontFamily="monospace">✕ delete</text>
@@ -1791,6 +1793,24 @@ export function CanvasEditor() {
             onMove={setViewOffset} 
          />
       </div>
+
+      {/* Connection Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!pendingDeleteConnection}
+        title="DELETE_CONNECTION"
+        message="Are you sure you want to delete this connection? This action cannot be undone."
+        variant="danger"
+        confirmText="DELETE"
+        cancelText="CANCEL"
+        onConfirm={() => {
+          if (pendingDeleteConnection) {
+            deleteConnection(pendingDeleteConnection);
+            playTrash();
+          }
+          setPendingDeleteConnection(null);
+        }}
+        onCancel={() => setPendingDeleteConnection(null)}
+      />
     </div>
   );
 }

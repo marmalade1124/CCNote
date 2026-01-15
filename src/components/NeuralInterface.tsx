@@ -382,13 +382,13 @@ export function NeuralInterface() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed top-28 right-4 z-[140] bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg p-3 w-64 shadow-[0_0_20px_rgba(57,255,20,0.2)]"
+            className="fixed top-14 right-[320px] z-[140] bg-[#0a0b10]/95 border border-[#eca013]/50 rounded-lg p-3 w-64 shadow-[0_0_20px_rgba(236,160,19,0.2)] backdrop-blur-sm"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[#39ff14] text-xs font-bold tracking-wide">MIC SETTINGS</span>
+              <span className="text-[#eca013] text-xs font-bold tracking-wide">MIC SETTINGS</span>
               <button 
                 onClick={() => setShowMicSettings(false)}
-                className="text-[#39ff14]/60 hover:text-[#39ff14] text-xs"
+                className="text-[#eca013]/60 hover:text-[#eca013] text-xs"
               >
                 ✕
               </button>
@@ -397,7 +397,7 @@ export function NeuralInterface() {
             <select
               value={selectedMic}
               onChange={(e) => setSelectedMic(e.target.value)}
-              className="w-full bg-[#0a0b10] border border-[#39ff14]/30 rounded px-2 py-1.5 text-xs text-[#39ff14] focus:outline-none focus:border-[#39ff14]"
+              className="w-full bg-[#0a0b10] border border-[#eca013]/30 rounded px-2 py-1.5 text-xs text-[#eca013] focus:outline-none focus:border-[#eca013]"
             >
               {microphones.length === 0 ? (
                 <option value="">No microphones found</option>
@@ -410,7 +410,7 @@ export function NeuralInterface() {
               )}
             </select>
             
-            <div className="mt-2 text-[8px] text-[#39ff14]/40">
+            <div className="mt-2 text-[8px] text-[#eca013]/40">
               {microphones.length} device(s) available
             </div>
           </motion.div>
