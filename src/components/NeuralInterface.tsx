@@ -228,8 +228,8 @@ export function NeuralInterface() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                // Fixed position above the robot (robot is at bottom-6 right-6)
-                className="fixed bottom-32 right-6 w-80 z-[120] font-mono"
+                // Fixed position above the robot (robot is at bottom-36 right-6)
+                className="fixed bottom-64 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">

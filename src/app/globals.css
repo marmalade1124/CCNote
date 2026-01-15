@@ -314,3 +314,19 @@ input:not([type="file"]):focus, textarea:focus {
     z-index: 100;
     mix-blend-mode: screen;
 }
+
+/* Connection Line Hover Effect */
+.connection-group:hover .connection-line {
+    stroke: #ff5555 !important;
+    opacity: 1 !important;
+    stroke-width: 2px !important;
+}
+
+.connection-group:hover .connection-delete-text {
+    opacity: 1 !important;
+}
+
+.connection-delete-text {
+    opacity: 0;
+    transition: opacity 0.2s;
+}

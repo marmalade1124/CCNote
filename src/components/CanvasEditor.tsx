@@ -1439,10 +1439,10 @@ export function CanvasEditor() {
                     const sPos = getElementCenter(start);
                     const ePos = getElementCenter(end);
                     return (
-                      <g key={conn.id} className="cursor-pointer group" onClick={(e) => { e.stopPropagation(); if (confirm('Delete this connection?')) { deleteConnection(conn.id); playTrash(); } }}>
+                      <g key={conn.id} className="cursor-pointer connection-group" onClick={(e) => { e.stopPropagation(); if (confirm('Delete this connection?')) { deleteConnection(conn.id); playTrash(); } }}>
                         <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="transparent" strokeWidth="12"/>
-                        <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="#eca013" strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5" className="group-hover:stroke-red-500 group-hover:opacity-100"/>
-                        <text x={(sPos.x + ePos.x) / 2} y={(sPos.y + ePos.y) / 2 - 8} fill="#ff5555" fontSize="10" textAnchor="middle" className="opacity-0 group-hover:opacity-100 pointer-events-none" fontFamily="monospace">✕ delete</text>
+                        <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="#eca013" strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5" className="connection-line"/>
+                        <text x={(sPos.x + ePos.x) / 2} y={(sPos.y + ePos.y) / 2 - 8} fill="#ff5555" fontSize="10" textAnchor="middle" className="connection-delete-text pointer-events-none" fontFamily="monospace">✕ delete</text>
                       </g>
                     );
                 })}

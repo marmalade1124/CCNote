@@ -191,7 +191,7 @@ export function EmoRobot({
   return (
     <motion.div
       ref={robotRef}
-      className="fixed bottom-6 right-6 z-[130]"
+      className="fixed bottom-36 right-6 z-[130]"
     >
       {/* Speech Bubble */}
       <AnimatePresence>
