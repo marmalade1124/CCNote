@@ -186,6 +186,31 @@ export function CanvasEditor() {
   
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
+  // Focus Mode Hotkeys (after state declarations)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        if (!focusMode && selectedElement) {
+          setFocusedElementId(selectedElement);
+          setFocusMode(true);
+          playConfirm();
+        } else if (focusMode) {
+          setFocusMode(false);
+          setFocusedElementId(null);
+          playClick();
+        }
+      } else if (e.key === 'Escape' && focusMode) {
+        setFocusMode(false);
+        setFocusedElementId(null);
+        playClick();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusMode, selectedElement, playConfirm, playClick]);
+
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
     
@@ -1449,6 +1474,29 @@ export function CanvasEditor() {
                         {viewMode === 'editor' ? 'LOGIC_GRAPH' : 'VISUAL_EDITOR'}
                 </span>
             </button>
+            
+            {/* Focus Mode Toggle */}
+            <button 
+                title="FOCUS MODE (F11)"
+                className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${focusMode ? "bg-[#39ff14] text-[#0a0b10] border-[#39ff14] shadow-[0_0_10px_#39ff14] animate-pulse" : "text-[#39ff14] hover:bg-[#39ff14]/10 hover:border-[#39ff14]/50"}`}
+                onMouseEnter={playHover}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    playConfirm();
+                    if (!focusMode && selectedElement) {
+                      setFocusedElementId(selectedElement);
+                      setFocusMode(true);
+                    } else {
+                      setFocusMode(false);
+                      setFocusedElementId(null);
+                    }
+                }}
+            >
+                <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#39ff14] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10">
+                    FOCUS (F11)
+                </span>
+            </button>
          </div>
       </div>
 
@@ -1881,6 +1929,74 @@ export function CanvasEditor() {
       />
 
       <SmartLinkPanel nodeId={selectedElement} />
+      
+      {/* Focus Mode Overlay */}
+      {focusMode && focusedElementId && (
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md animate-in fade-in duration-300">
+          {/* Exit Hint */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-10">
+            <div className="bg-[#39ff14]/10 border border-[#39ff14]/30 rounded px-6 py-3 backdrop-blur-sm">
+              <p className="text-[#39ff14] font-mono text-sm tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg animate-pulse">center_focus_strong</span>
+                <span>FOCUS MODE ACTIVE</span>
+                <span className="text-[#39ff14]/50">• Press ESC or F11 to exit</span>
+              </p>
+            </div>
+          </div>
+          
+          {/* Render Only Focused Element */}
+          <div 
+            className="relative w-full h-full flex items-center justify-center"
+            onClick={() => {
+              setFocusMode(false);
+              setFocusedElementId(null);
+              playClick();
+            }}
+          >
+            {(() => {
+              const element = activeCanvas.elements.find(el => el.id === focusedElementId);
+              if (!element) return null;
+              
+              return (
+                <div 
+                  className="max-w-4xl w-full mx-auto p-8 bg-[#0a0b10]/50 border-2 border-[#39ff14] rounded-lg animate-in zoom-in duration-300 shadow-[0_0_60px_rgba(57,255,20,0.3)]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Element Type Badge */}
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="px-3 py-1 bg-[#39ff14]/20 border border-[#39ff14]/50 rounded text-[#39ff14] text-xs font-bold tracking-widest uppercase">
+                      {element.type}
+                    </span>
+                    <span className="text-[#39ff14]/50 text-xs font-mono">
+                      ID: {element.id.substring(0, 8)}...
+                    </span>
+                  </div>
+                  
+                  {/* Content */}
+                  <div 
+                    className="text-[#eca013] font-mono text-lg leading-relaxed whitespace-pre-wrap p-6 bg-[#0a0b10]/80 border border-[#eca013]/30 rounded min-h-[200px] max-h-[600px] overflow-y-auto focus:outline-none focus:border-[#eca013] transition-all"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      const newContent = e.currentTarget.textContent || '';
+                      if (newContent !== element.content) {
+                        updateElement(element.id, { content: newContent });
+                      }
+                    }}
+                  >
+                    {element.content}
+                  </div>
+                  
+                  {/* Hint */}
+                  <div className="mt-4 text-center text-[#39ff14]/50 text-xs font-mono">
+                    Click outside or press ESC to exit focus mode
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
