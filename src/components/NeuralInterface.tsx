@@ -316,7 +316,7 @@ export function NeuralInterface() {
                 className="fixed bottom-64 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono scrollbar-thin scrollbar-thumb-[#39ff14]/20 scrollbar-track-transparent overflow-x-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono scrollbar-thin scrollbar-thumb-[#39ff14]/20 scrollbar-track-transparent overflow-x-hidden max-h-[400px] [mask-image:linear-gradient(to_bottom,transparent,black_20px,black_100%)]">
                     {localMessages.length === 0 && messages.length === 0 && (
                         <div className="text-[#39ff14]/30 text-[10px] text-center mt-20 font-mono">
                             // NO_DATA_STREAM<br/>
