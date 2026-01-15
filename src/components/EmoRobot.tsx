@@ -89,6 +89,7 @@ export function EmoRobot({
   const hoverCountRef = useRef(0);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const wanderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isDraggingRef = useRef(false);
 
   // Determine expression based on state
   useEffect(() => {
@@ -328,25 +329,33 @@ export function EmoRobot({
       ref={robotRef}
       drag
       dragMomentum={false}
-      dragElastic={0.1}
+      dragElastic={0}
+      dragConstraints={{ left: -500, right: 100, top: -400, bottom: 100 }}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
       onDragEnd={(_, info) => {
+        // Small delay to prevent click from firing
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 100);
+        
         // Mark that user dragged (prevents wandering for 30s)
         lastDragTimeRef.current = Date.now();
         
-        // Calculate new position with bounds clamping
+        // Use the actual drag point offset from the animate position
         let newX = position.x + info.offset.x;
         let newY = position.y + info.offset.y;
         
-        // Clamp to safe bounds (prevent going off screen)
-        // NEGATIVE values keep it on screen, POSITIVE values push it off
-        newX = Math.max(-400, Math.min(50, newX));  // -400 (far left) to 50 (slightly right only)
-        newY = Math.max(-300, Math.min(50, newY));  // -300 (far up) to 50 (slightly down only)
+        // Clamp to safe bounds
+        newX = Math.max(-500, Math.min(100, newX));
+        newY = Math.max(-400, Math.min(100, newY));
         
         onPositionChange({ x: newX, y: newY });
       }}
       className="fixed bottom-6 right-6 z-[130] cursor-grab active:cursor-grabbing"
       animate={{ x: position.x, y: position.y }}
-      transition={{ type: "spring", stiffness: 100, damping: 15 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       {/* Speech Bubble */}
       <AnimatePresence>
@@ -364,7 +373,15 @@ export function EmoRobot({
       </AnimatePresence>
 
       <motion.button
-        onClick={onClick}
+        onClick={(e) => {
+          // Prevent click if we just finished dragging
+          if (isDraggingRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          onClick();
+        }}
         onMouseEnter={handleMouseEnter}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
