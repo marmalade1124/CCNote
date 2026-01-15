@@ -155,7 +155,8 @@ export function NeuralInterface() {
 - "Zoom In" / "Zoom Out"
 - "Create Note [Text]"
 *(No wake word needed when typing!)*`,
-              source: '⚡ LOCAL'
+              source: '⚡ LOCAL',
+              createdAt: Date.now()
           }]);
           return true;
       }
