@@ -93,7 +93,8 @@ export function useCanvasKnowledge() {
     // === Question patterns ===
 
     // Count questions
-    if (q.includes("how many") && (q.includes("node") || q.includes("element") || q.includes("item"))) {
+    // Count questions
+    if (q.includes("how many") && (q.includes("node") || q.includes("element") || q.includes("item") || q.includes("note"))) {
       const count = elements.length;
       const byType: Record<string, number> = {};
       elements.forEach(el => {

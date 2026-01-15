@@ -72,6 +72,7 @@ export function NeuralInterface() {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [inputInternal, setInputInternal] = useState("");
+  const [useCloudAI, setUseCloudAI] = useState(true);
   const recognitionRef = useRef<any>(null);
   const spokenMessageIds = useRef<Set<string>>(new Set());
   const shouldListenRef = useRef(false); // Track if we WANT to be listening
@@ -395,11 +396,28 @@ export function NeuralInterface() {
 
                 {/* Input Panel */}
                 <div className="bg-[#0a0b10]/90 backdrop-blur-md border border-[#39ff14]/50 rounded-lg p-3 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
-                    <div className="flex items-center gap-2 mb-2">
-                         <div className={`size-3 rounded-full ${isLoading ? 'bg-red-500 animate-pulse' : 'bg-[#39ff14]'}`}></div>
-                         <span className="text-[#39ff14] text-xs font-bold tracking-widest uppercase">
-                             {isLoading ? "PROCESSING..." : isListening ? "LISTENING..." : "NEURAL_LINK_READY"}
-                         </span>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                             <div className={`size-3 rounded-full ${isLoading ? 'bg-red-500 animate-pulse' : 'bg-[#39ff14]'}`}></div>
+                             <span className="text-[#39ff14] text-xs font-bold tracking-widest uppercase">
+                                 {isLoading ? "PROCESSING..." : isListening ? "LISTENING..." : "NEURAL_LINK_READY"}
+                             </span>
+                        </div>
+                        
+                        {/* AI Toggle for User */}
+                        <button 
+                            type="button"
+                            onClick={() => setUseCloudAI(!useCloudAI)}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono border transition-all ${
+                                useCloudAI 
+                                    ? 'bg-[#39ff14]/10 border-[#39ff14]/50 text-[#39ff14]' 
+                                    : 'bg-red-500/10 border-red-500/50 text-red-500 opacity-60'
+                            }`}
+                            title={useCloudAI ? "Cloud AI Enabled" : "Cloud AI Disabled (Local Only)"}
+                        >
+                            <span className="material-symbols-outlined text-[10px]">{useCloudAI ? 'cloud_done' : 'cloud_off'}</span>
+                            {useCloudAI ? 'AI: ON' : 'AI: OFF'}
+                        </button>
                     </div>
 
                     <form 
@@ -433,8 +451,19 @@ export function NeuralInterface() {
                               }]);
                               speak(localAnswer.text);
                             } else {
-                              // 3. Fallback to Cloud AI
-                              sendMessage({ role: 'user', content: query });
+                              // 3. Fallback to Cloud AI (Only if enabled)
+                              if (useCloudAI) {
+                                  sendMessage({ role: 'user', content: query });
+                              } else {
+                                  // AI Disabled fallback
+                                  const msg = "Cloud AI is disabled.";
+                                  setLocalMessages(prev => [...prev, { 
+                                      role: 'assistant', 
+                                      content: msg, 
+                                      source: '🚫 OFFLINE' 
+                                  }]);
+                                  speak("Cloud AI is disabled.");
+                              }
                             }
                         }}
                         className="flex gap-2"
