@@ -262,15 +262,20 @@ export function CanvasEditor() {
             const firstLink = linkMatches[0][1];
             
             console.log(`[HOVER] FOUND LINK at level ${attempts}:`, firstLink);
-            console.log('[HOVER] Setting timeout to show preview...');
             
-            hoverTimeoutRef.current = setTimeout(() => {
-              console.log('[HOVER] TIMEOUT FIRED - Setting preview state for:', firstLink);
-              setHoveredLink({
-                text: firstLink,
-                position: { x: e.clientX + 20, y: e.clientY + 20 }
-              });
-            }, 300);
+            // IMPORTANT: Only set state if link changed!
+            if (hoveredLink?.text !== firstLink) {
+              console.log('[HOVER] New link detected, setting timeout...');
+              hoverTimeoutRef.current = setTimeout(() => {
+                console.log('[HOVER] TIMEOUT FIRED - Setting preview state for:', firstLink);
+                setHoveredLink({
+                  text: firstLink,
+                  position: { x: e.clientX + 20, y: e.clientY + 20 }
+                });
+              }, 300);
+            } else {
+              console.log('[HOVER] Same link, skipping setState');
+            }
             return;
           }
         }
