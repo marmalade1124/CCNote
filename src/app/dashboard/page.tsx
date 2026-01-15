@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useHotkeys } from "react-hotkeys-hook";
 import { CanvasProvider } from "@/context/CanvasContext";
 import { ToastProvider } from "@/components/Toast";
 import { SystemBar } from "@/components/SystemBar";
 import { CanvasEditor } from "@/components/CanvasEditor";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NeuralInterface } from "@/components/NeuralInterface";
+import { QuickCapture } from "@/components/QuickCapture";
 
 export default function DashboardPage() {
   const [isShuttingDown, setIsShuttingDown] = useState(false);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
   const router = useRouter();
+
+  // Global hotkey for Quick Capture
+  useHotkeys('mod+n', (e) => {
+    e.preventDefault();
+    setShowQuickCapture(true);
+  }, { enableOnFormTags: true });
 
   const handleShutdown = () => {
     setIsShuttingDown(true);
@@ -41,6 +50,18 @@ export default function DashboardPage() {
           
           {/* AI Assistant Overlay */}
           <NeuralInterface />
+          
+          {/* Quick Capture Modal */}
+          <QuickCapture 
+            isOpen={showQuickCapture}
+            onClose={() => setShowQuickCapture(false)}
+            onSubmit={(content) => {
+              // Will be handled by CanvasEditor context
+              window.dispatchEvent(new CustomEvent('quick-capture', { 
+                detail: { content } 
+              }));
+            }}
+          />
           
         </div>
       </CanvasProvider>

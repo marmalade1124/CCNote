@@ -181,6 +181,8 @@ export function CanvasEditor() {
   } | null>(null);
 
   const [viewMode, setViewMode] = useState<'editor' | 'graph'>('editor');
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusedElementId, setFocusedElementId] = useState<string | null>(null);
   
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
@@ -703,11 +705,38 @@ export function CanvasEditor() {
           }
       };
 
+      const handleQuickCapture = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (!detail?.content) return;
+        
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const z = zoomRef.current;
+        const vo = viewOffsetRef.current;
+        
+        // Center of viewport
+        const cx = (-vo.x + vw/2) / z;
+        const cy = (-vo.y + vh/2) / z;
+        
+        addElement({
+          type: 'text',
+          content: detail.content,
+          x: cx - 100,
+          y: cy - 50,
+          width: 300,
+          height: 150,
+          color: '#eca013'
+        });
+        playConfirm();
+      };
+
       window.addEventListener('canvas:pan-to', handlePanTo);
       window.addEventListener('canvas-action', handleAction);
+      window.addEventListener('quick-capture', handleQuickCapture);
       return () => {
           window.removeEventListener('canvas:pan-to', handlePanTo);
           window.removeEventListener('canvas-action', handleAction);
+          window.removeEventListener('quick-capture', handleQuickCapture);
       };
   }, [canvasEl, addElement, playConfirm]);
 
