@@ -216,7 +216,7 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - OPTIMIZED (no logs)
+  // Hover detection for wiki links - OPTIMIZED
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       // Clear existing timeout
@@ -228,7 +228,8 @@ export function CanvasEditor() {
       const target = e.target as HTMLElement;
       let noteElement: HTMLElement | null = target;
       let attempts = 0;
-      const maxAttempts = 10; // Increased to search more levels
+      const maxAttempts = 15; // Increased even more for unfocused cards
+      let foundLink = false;
       
       while (noteElement && attempts < maxAttempts) {
         const textContent = noteElement.textContent || '';
@@ -238,16 +239,17 @@ export function CanvasEditor() {
           const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
           
           if (linkMatches.length > 0) {
+            foundLink = true;
             const firstLink = linkMatches[0][1];
             
-            // Show preview after delay
+            // Show preview after delay (only if not already showing same link)
             hoverTimeoutRef.current = setTimeout(() => {
               setHoveredLink({
                 text: firstLink,
                 position: { x: e.clientX + 20, y: e.clientY + 20 }
               });
             }, 300);
-            return;
+            return; // Exit early - found a link
           }
         }
         
@@ -256,10 +258,10 @@ export function CanvasEditor() {
         attempts++;
       }
       
-      // No links found, clear preview
-      hoverTimeoutRef.current = setTimeout(() => {
+      // If we didn't find any links, clear preview immediately (no delay)
+      if (!foundLink) {
         setHoveredLink(null);
-      }, 100);
+      }
     };
     
     const handleMouseLeave = () => {
