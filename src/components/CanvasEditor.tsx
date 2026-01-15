@@ -216,9 +216,17 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - OPTIMIZED
+  // Hover detection for wiki links - WITH THROTTLE
   useEffect(() => {
+    let lastCallTime = 0;
+    const throttleMs = 50; // Only process mousemove every 50ms
+    
     const handleMouseMove = (e: MouseEvent) => {
+      // Throttle: Skip if called too recently
+      const now = Date.now();
+      if (now - lastCallTime < throttleMs) return;
+      lastCallTime = now;
+      
       // Clear existing timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
@@ -228,8 +236,17 @@ export function CanvasEditor() {
       const target = e.target as HTMLElement;
       let noteElement: HTMLElement | null = target;
       let attempts = 0;
-      const maxAttempts = 15; // Increased even more for unfocused cards
+      const maxAttempts = 20; // Even more!
       let foundLink = false;
+      
+      // Debug: Log first element
+      if (attempts === 0) {
+        console.log('[HOVER] Starting search from:', {
+          tag: target.tagName,
+          classes: target.className?.substring(0, 50),
+          text: target.textContent?.substring(0, 50)
+        });
+      }
       
       while (noteElement && attempts < maxAttempts) {
         const textContent = noteElement.textContent || '';
@@ -242,14 +259,16 @@ export function CanvasEditor() {
             foundLink = true;
             const firstLink = linkMatches[0][1];
             
-            // Show preview after delay (only if not already showing same link)
+            console.log('[HOVER] Found link at level', attempts, ':', firstLink);
+            
+            // Show preview after delay
             hoverTimeoutRef.current = setTimeout(() => {
               setHoveredLink({
                 text: firstLink,
                 position: { x: e.clientX + 20, y: e.clientY + 20 }
               });
             }, 300);
-            return; // Exit early - found a link
+            return; // Exit early
           }
         }
         
@@ -258,7 +277,12 @@ export function CanvasEditor() {
         attempts++;
       }
       
-      // If we didn't find any links, clear preview immediately (no delay)
+      // Debug if we didn't find anything
+      if (!foundLink) {
+        console.log('[HOVER] No links found after', attempts, 'levels');
+      }
+      
+      // Clear preview immediately if no links
       if (!foundLink) {
         setHoveredLink(null);
       }
