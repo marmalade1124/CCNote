@@ -1458,6 +1458,25 @@ export function CanvasEditor() {
             ))}
 
             <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
+            
+            {/* Quick Capture Button */}
+            <button 
+                title="QUICK CAPTURE (/ or ALT+N)"
+                className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent text-[#eca013] hover:bg-[#eca013]/10 hover:border-[#eca013]/50"
+                onMouseEnter={playHover}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    playClick();
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+                }}
+            >
+                <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10">
+                    QUICK NOTE
+                </span>
+            </button>
+
+            <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
 
             <button 
                 title={viewMode === 'editor' ? "SWITCH TO GRAPH" : "SWITCH TO EDITOR"}
