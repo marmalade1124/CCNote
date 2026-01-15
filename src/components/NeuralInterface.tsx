@@ -166,9 +166,13 @@ export function NeuralInterface() {
             console.log("[NeuralInterface] Final transcript:", transcript);
             const lowerTranscript = transcript.toLowerCase().trim();
 
-            // Voice Command Check: "Beepo"
-            if (lowerTranscript.startsWith("beepo")) {
-                const command = lowerTranscript.replace(/^beepo\s*/, "").trim();
+            // Fuzzy Wake Word Check: "Beepo", "People", "Repo", "Deep oh", "Bepo"
+            // We strip the wake word to get the command.
+            const wakeWordRegex = /^(beepo|people|bepo|repo|deep oh|depot)\b\s*/i;
+            const match = lowerTranscript.match(wakeWordRegex);
+
+            if (match) {
+                const command = lowerTranscript.replace(wakeWordRegex, "").trim();
                 console.log("[Voice Command]", command);
                 
                 if (command.includes("zoom in")) {
@@ -185,6 +189,17 @@ export function NeuralInterface() {
                     } else {
                         speak("What should the note say?");
                     }
+                } else if (command.includes("help") || command.includes("commands")) {
+                    // List commands
+                    speak("I can zoom, create notes, and connect ideas. Just ask.");
+                    sendMessage({ 
+                        role: 'assistant', 
+                        content: `**🎤 Beepo Commands**
+- "Beepo **Zoom In**"
+- "Beepo **Zoom Out**"
+- "Beepo **Create Note [Text]**"
+*(Also responds to: 'People', 'Bepo', 'Repo')*` 
+                    });
                 } else {
                     speak("Command not recognized.");
                 }
@@ -272,7 +287,7 @@ export function NeuralInterface() {
                 className="fixed bottom-64 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
-                <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono scrollbar-thin scrollbar-thumb-[#39ff14]/20 scrollbar-track-transparent overflow-x-hidden">
                     {localMessages.length === 0 && messages.length === 0 && (
                         <div className="text-[#39ff14]/30 text-[10px] text-center mt-20 font-mono">
                             // NO_DATA_STREAM<br/>
