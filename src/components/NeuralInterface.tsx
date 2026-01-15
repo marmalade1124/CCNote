@@ -372,10 +372,10 @@ export function NeuralInterface() {
       <AnimatePresence>
         {showMicSettings && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="fixed bottom-28 right-6 z-[140] bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg p-3 w-64 shadow-[0_0_20px_rgba(57,255,20,0.2)]"
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-28 right-4 z-[140] bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg p-3 w-64 shadow-[0_0_20px_rgba(57,255,20,0.2)]"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[#39ff14] text-xs font-bold tracking-wide">MIC SETTINGS</span>
