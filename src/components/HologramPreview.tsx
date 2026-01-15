@@ -14,14 +14,25 @@ export function HologramPreview({ linkText, position, onNavigate }: HologramPrev
   const { activeCanvas } = useCanvas();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
-  // Find the linked element
+  // Normalize text for comparison: lowercase, replace underscores with spaces, trim
+  const normalize = (text: string) => text.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  const normalizedLinkText = normalize(linkText);
+  
+  // Find the linked element with FUZZY MATCHING
   const linkedElement = activeCanvas?.elements.find(el => {
-    if (el.type === 'card' && el.content.startsWith(linkText + '||')) return true;
-    if ((el.type === 'text' || el.type === 'sticky') && (el.content.startsWith(linkText) || el.content === linkText)) return true;
+    if (el.type === 'card') {
+      // Card content format: "title||description"
+      const title = el.content.split('||')[0] || '';
+      return normalize(title) === normalizedLinkText;
+    }
+    if (el.type === 'text' || el.type === 'sticky') {
+      const normalizedContent = normalize(el.content);
+      return normalizedContent === normalizedLinkText || normalizedContent.startsWith(normalizedLinkText);
+    }
     if (el.type === 'folder') {
       try {
         const parsed = JSON.parse(el.content);
-        return parsed.title === linkText;
+        return normalize(parsed.title || '') === normalizedLinkText;
       } catch { return false; }
     }
     return false;
