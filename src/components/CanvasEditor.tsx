@@ -743,13 +743,18 @@ export function CanvasEditor() {
         const cx = (-vo.x + vw/2) / z;
         const cy = (-vo.y + vh/2) / z;
         
+        // Extract first line as title, rest as description
+        const lines = detail.content.split('\n');
+        const title = lines[0] || 'New Note';
+        const description = lines.slice(1).join('\n') || 'No description';
+        
         addElement({
-          type: 'text',
-          content: detail.content,
-          x: cx - 100,
-          y: cy - 50,
-          width: 300,
-          height: 150,
+          type: 'card', // Changed from 'text' to 'card' for better UI
+          content: `${title}||${description}`,
+          x: cx - 150,
+          y: cy - 100,
+          width: 320,
+          height: 240,
           color: '#eca013'
         });
         playConfirm();
