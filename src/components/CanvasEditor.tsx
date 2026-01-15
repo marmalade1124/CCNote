@@ -216,46 +216,36 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - HANDLES BOTH FOCUSED AND UNFOCUSED CARDS
+  // Hover detection for wiki links - STABLE VERSION
   const currentLinkRef = useRef<string | null>(null);
   const previewPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
-    let lastCallTime = 0;
-    const throttleMs = 80;
-    
     const handleMouseMove = (e: MouseEvent) => {
-      // Throttle
-      const now = Date.now();
-      if (now - lastCallTime < throttleMs) return;
-      lastCallTime = now;
-      
-      // Clear pending timeouts
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
+      // Cancel any pending clear
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
+        clearTimeoutRef.current = null;
       }
       
       const target = e.target as HTMLElement;
       let foundLinkName: string | null = null;
       
       // METHOD 1: Check if hovering on a wiki link anchor (UNFOCUSED CARDS)
-      // ReactMarkdown renders [[link]] as <a href="#link">link</a>
       const anchorElement = target.closest('a[href^="#"]') as HTMLAnchorElement;
-      if (anchorElement && anchorElement.href) {
-        // Extract link name from href (format: #linkname)
+      if (anchorElement) {
         const href = anchorElement.getAttribute('href');
-        if (href && href.startsWith('#')) {
+        if (href && href.startsWith('#') && href.length > 1) {
           foundLinkName = href.substring(1).trim();
         }
       }
       
-      // METHOD 2: Check if directly hovering on raw [[link]] text (FOCUSED CARDS)
+      // METHOD 2: Check raw [[link]] text (FOCUSED CARDS) - search deeper
       if (!foundLinkName) {
-        // Check just the immediate element and a few parents (not too deep)
         let searchElement: HTMLElement | null = target;
         let attempts = 0;
-        const maxAttempts = 5; // Keep it shallow for precision
+        const maxAttempts = 10; // Increased depth
         
         while (searchElement && attempts < maxAttempts) {
           const text = searchElement.textContent || '';
@@ -263,11 +253,7 @@ export function CanvasEditor() {
           
           if (match && match[1]) {
             const linkName = match[1].trim();
-            // Validate it's a real link name
-            if (linkName && 
-                !linkName.startsWith('{') && 
-                !linkName.includes('"') && 
-                linkName.length < 100) {
+            if (linkName && !linkName.startsWith('{') && !linkName.includes('"') && linkName.length < 100) {
               foundLinkName = linkName;
               break;
             }
@@ -278,38 +264,51 @@ export function CanvasEditor() {
         }
       }
       
-      // Handle found link
+      // Found a link
       if (foundLinkName) {
-        // Only update if link changed
+        // Only update if different link
         if (currentLinkRef.current !== foundLinkName) {
-          currentLinkRef.current = foundLinkName;
+          // Clear any pending show timeout
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+          }
           
-          // Store position at first detection
+          currentLinkRef.current = foundLinkName;
           previewPositionRef.current = { x: e.clientX + 20, y: e.clientY + 20 };
           
+          // Show after delay
+          const linkToShow = foundLinkName;
+          const pos = previewPositionRef.current;
           hoverTimeoutRef.current = setTimeout(() => {
-            const pos = previewPositionRef.current || { x: e.clientX + 20, y: e.clientY + 20 };
-            setHoveredLink({
-              text: foundLinkName!,
-              position: pos
-            });
-          }, 300);
+            setHoveredLink({ text: linkToShow, position: pos });
+          }, 250);
         }
         return;
       }
       
-      // No link found - ALWAYS clear
+      // No link found - debounced clear (don't clear immediately!)
       if (currentLinkRef.current !== null) {
-        currentLinkRef.current = null;
-        previewPositionRef.current = null;
-        setHoveredLink(null);
+        clearTimeoutRef.current = setTimeout(() => {
+          currentLinkRef.current = null;
+          previewPositionRef.current = null;
+          if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+          }
+          setHoveredLink(null);
+        }, 100); // Small delay before clearing
       }
     };
     
     const handleMouseLeave = () => {
+      // Clear everything on mouse leave
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = null;
+      }
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current);
+        clearTimeoutRef.current = null;
       }
       currentLinkRef.current = null;
       previewPositionRef.current = null;
@@ -322,9 +321,8 @@ export function CanvasEditor() {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
     };
   }, []);
 
