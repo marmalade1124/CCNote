@@ -216,12 +216,13 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - PROPERLY FIXED
+  // Hover detection for wiki links - HANDLES BOTH FOCUSED AND UNFOCUSED CARDS
   const currentLinkRef = useRef<string | null>(null);
+  const previewPositionRef = useRef<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     let lastCallTime = 0;
-    const throttleMs = 100;
+    const throttleMs = 80;
     
     const handleMouseMove = (e: MouseEvent) => {
       // Throttle
@@ -229,60 +230,78 @@ export function CanvasEditor() {
       if (now - lastCallTime < throttleMs) return;
       lastCallTime = now;
       
-      // Clear pending timeout
+      // Clear pending timeouts
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = null;
       }
       
       const target = e.target as HTMLElement;
-      let searchElement: HTMLElement | null = target;
-      let attempts = 0;
-      const maxAttempts = 20;
+      let foundLinkName: string | null = null;
       
-      // Search up the DOM tree for elements containing [[links]]
-      while (searchElement && attempts < maxAttempts) {
-        const text = searchElement.textContent || '';
-        
-        // Look for [[wiki link]] pattern
-        const match = text.match(/\[\[([^\[\]]+)\]\]/);
-        
-        if (match && match[1]) {
-          const linkName = match[1].trim();
-          
-          // Validate: must be a simple string, not JSON or special characters
-          if (linkName && 
-              !linkName.startsWith('{') && 
-              !linkName.startsWith('[') &&
-              !linkName.includes('"') &&
-              linkName.length < 100) {
-            
-            // Only trigger if link changed (prevents duplicate re-renders)
-            if (currentLinkRef.current !== linkName) {
-              currentLinkRef.current = linkName;
-              
-              // Store position at detection time (doesn't follow cursor)
-              const posX = e.clientX + 20;
-              const posY = e.clientY + 20;
-              
-              hoverTimeoutRef.current = setTimeout(() => {
-                setHoveredLink({
-                  text: linkName,
-                  position: { x: posX, y: posY }
-                });
-              }, 300);
-            }
-            return; // Found a link, stop searching
-          }
+      // METHOD 1: Check if hovering on a wiki link anchor (UNFOCUSED CARDS)
+      // ReactMarkdown renders [[link]] as <a href="#link">link</a>
+      const anchorElement = target.closest('a[href^="#"]') as HTMLAnchorElement;
+      if (anchorElement && anchorElement.href) {
+        // Extract link name from href (format: #linkname)
+        const href = anchorElement.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          foundLinkName = href.substring(1).trim();
         }
-        
-        searchElement = searchElement.parentElement;
-        attempts++;
       }
       
-      // No valid link found - clear preview
+      // METHOD 2: Check if directly hovering on raw [[link]] text (FOCUSED CARDS)
+      if (!foundLinkName) {
+        // Check just the immediate element and a few parents (not too deep)
+        let searchElement: HTMLElement | null = target;
+        let attempts = 0;
+        const maxAttempts = 5; // Keep it shallow for precision
+        
+        while (searchElement && attempts < maxAttempts) {
+          const text = searchElement.textContent || '';
+          const match = text.match(/\[\[([^\[\]]+)\]\]/);
+          
+          if (match && match[1]) {
+            const linkName = match[1].trim();
+            // Validate it's a real link name
+            if (linkName && 
+                !linkName.startsWith('{') && 
+                !linkName.includes('"') && 
+                linkName.length < 100) {
+              foundLinkName = linkName;
+              break;
+            }
+          }
+          
+          searchElement = searchElement.parentElement;
+          attempts++;
+        }
+      }
+      
+      // Handle found link
+      if (foundLinkName) {
+        // Only update if link changed
+        if (currentLinkRef.current !== foundLinkName) {
+          currentLinkRef.current = foundLinkName;
+          
+          // Store position at first detection
+          previewPositionRef.current = { x: e.clientX + 20, y: e.clientY + 20 };
+          
+          hoverTimeoutRef.current = setTimeout(() => {
+            const pos = previewPositionRef.current || { x: e.clientX + 20, y: e.clientY + 20 };
+            setHoveredLink({
+              text: foundLinkName!,
+              position: pos
+            });
+          }, 300);
+        }
+        return;
+      }
+      
+      // No link found - ALWAYS clear
       if (currentLinkRef.current !== null) {
         currentLinkRef.current = null;
+        previewPositionRef.current = null;
         setHoveredLink(null);
       }
     };
@@ -293,6 +312,7 @@ export function CanvasEditor() {
         hoverTimeoutRef.current = null;
       }
       currentLinkRef.current = null;
+      previewPositionRef.current = null;
       setHoveredLink(null);
     };
     
@@ -306,7 +326,7 @@ export function CanvasEditor() {
         clearTimeout(hoverTimeoutRef.current);
       }
     };
-  }, []); // Empty deps is correct now - we use refs!
+  }, []);
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
