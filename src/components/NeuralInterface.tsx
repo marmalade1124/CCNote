@@ -79,6 +79,8 @@ export function NeuralInterface() {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState<string>('');
   const [showMicSettings, setShowMicSettings] = useState(false);
+  const restartCounterRef = useRef(0); // Loop guard
+  const lastSuccessfulRunRef = useRef(Date.now()); // Track last successful recognition
 
   // Centralized Command Processor
   const processLocalCommand = useCallback((text: string, isTyped: boolean): boolean => {
@@ -112,8 +114,8 @@ export function NeuralInterface() {
           return true;
       } 
 
-      // Tag Filtering: "Focus #todo", "Toggle #urgent", "Show only #ideas", "Untoggle #tag"
-      if ((command.startsWith("focus") || command.startsWith("toggle") || command.startsWith("untoggle") || command.includes("show only")) && command.includes("#")) {
+      // Tag Filtering: "Focus #todo", "Toggle #urgent", "Show only #ideas"
+      if ((command.startsWith("focus") || command.startsWith("toggle") || command.includes("show only")) && command.includes("#")) {
           const match = command.match(/#[\w-]+/);
           if (match) {
               const tag = match[0].toLowerCase();
@@ -128,8 +130,23 @@ export function NeuralInterface() {
           }
       }
 
+      // Explicit Untoggle: "Untoggle #tag", "Remove filter #tag"
+      if ((command.startsWith("untoggle") || command.startsWith("remove filter")) && command.includes("#")) {
+        const match = command.match(/#[\w-]+/);
+        if (match) {
+            const tag = match[0].toLowerCase();
+            if (filterTag === tag) {
+                setFilterTag(null);
+                speak(`Filter cleared.`);
+            } else {
+                speak(`That filter is not active.`);
+            }
+            return true;
+        }
+      }
+
       // Clear Filter: "Clear tags", "Show all", "Reset view"
-      if (command.includes("clear tag") || command.includes("show all") || command.includes("reset view") || command.includes("unfilter")) {
+      if (command.includes("clear tag") || command.includes("show all") || command.includes("reset view") || command.includes("unfilter") || command.startsWith("untoggle")) {
           setFilterTag(null);
           speak("Showing all items.");
           return true;
@@ -210,12 +227,28 @@ export function NeuralInterface() {
         recognition.onstart = () => {
           console.log("[NeuralInterface] Speech recognition started");
           setIsListening(true);
+          // Reset restart counter on successful start
+          if (Date.now() - lastSuccessfulRunRef.current > 5000) {
+            restartCounterRef.current = 0;
+            lastSuccessfulRunRef.current = Date.now();
+          }
         };
         recognition.onend = () => {
           console.log("[NeuralInterface] Speech recognition ended");
           // Auto-restart if we still want to be listening
           if (shouldListenRef.current) {
-            console.log("[NeuralInterface] Restarting speech recognition...");
+            // Loop guard: Check if we've restarted too many times
+            if (restartCounterRef.current >= 10) {
+              console.error("[NeuralInterface] Too many restart attempts. Stopping to prevent infinite loop.");
+              setIsListening(false);
+              shouldListenRef.current = false;
+              setInputInternal("⚠️ Voice recognition unstable. Click mic to retry.");
+              setTimeout(() => setInputInternal(""), 5000);
+              return;
+            }
+            
+            console.log(`[NeuralInterface] Restarting speech recognition... (attempt ${restartCounterRef.current + 1}/10)`);
+            restartCounterRef.current++;
             try {
               recognition.start();
             } catch (e) {
@@ -225,6 +258,7 @@ export function NeuralInterface() {
             }
           } else {
             setIsListening(false);
+            restartCounterRef.current = 0; // Reset on manual stop
           }
         };
         recognition.onerror = (event: any) => {
@@ -233,6 +267,7 @@ export function NeuralInterface() {
           if (event.error === 'aborted' || event.error === 'not-allowed') {
             setIsListening(false);
             shouldListenRef.current = false;
+            restartCounterRef.current = 0;
           }
           
 
@@ -242,6 +277,7 @@ export function NeuralInterface() {
                setIsListening(false);
                setInputInternal("⚠️ Browser blocked mic (try allowing or use Chrome)");
                setTimeout(() => setInputInternal(""), 5000);
+               restartCounterRef.current = 0;
           }
           // 'no-speech' is common in continuous mode, we just let it restart via onend
         };
@@ -255,6 +291,10 @@ export function NeuralInterface() {
           
           if (result.isFinal) {
             console.log("[NeuralInterface] Final transcript:", transcript);
+            // Reset restart counter on successful recognition
+            restartCounterRef.current = 0;
+            lastSuccessfulRunRef.current = Date.now();
+            
             // Process voice command (requires wake word)
             const handled = processLocalCommand(transcript, false);
             

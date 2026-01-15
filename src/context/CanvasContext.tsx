@@ -3,6 +3,7 @@
 import { createContext, useContext, ReactNode, useCallback, useEffect, useState } from "react";
 import { Canvas, CanvasElement, Connection, DbCanvas, DbElement, DbConnection, CanvasTool } from "@/types/canvas";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/Toast";
 
 interface CanvasContextType {
   canvases: Canvas[];
@@ -76,6 +77,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>("select");
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   // Fetch all canvases from Supabase
   const refreshCanvases = useCallback(async () => {
@@ -323,22 +325,26 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
       const client = supabase;
       if (!client || !activeCanvasId || batchUpdates.length === 0) return;
 
+      // Store previous state for rollback
+      let previousState: Canvas[] | null = null;
+
       try {
-         // 1. Optimistically update local state ONCE
-         setCanvases((prev) =>
-          prev.map((c) =>
-            c.id === activeCanvasId
-              ? {
-                  ...c,
-                  elements: c.elements.map((el) => {
-                      const update = batchUpdates.find(u => u.id === el.id);
-                      return update ? { ...el, ...update.changes } : el;
-                  }),
-                  updatedAt: Date.now(),
-                }
-              : c
-          )
-        );
+         // 1. Capture current state BEFORE optimistic update
+         setCanvases((prev) => {
+            previousState = prev;
+            return prev.map((c) =>
+              c.id === activeCanvasId
+                ? {
+                    ...c,
+                    elements: c.elements.map((el) => {
+                        const update = batchUpdates.find(u => u.id === el.id);
+                        return update ? { ...el, ...update.changes } : el;
+                    }),
+                    updatedAt: Date.now(),
+                  }
+                : c
+            );
+         });
 
         // 2. Perform DB updates in parallel
         const promises = batchUpdates.map(async ({ id, changes }) => {
@@ -360,9 +366,17 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
 
       } catch (error) {
          console.error("Error batch updating elements:", error);
+         
+         // ROLLBACK: Restore previous state
+         if (previousState) {
+            setCanvases(previousState);
+         }
+         
+         // Notify user
+         showToast("Failed to save changes. Please check your connection.", "error");
       }
     },
-    [activeCanvasId]
+    [activeCanvasId, showToast]
   );
 
   const deleteElement = useCallback(

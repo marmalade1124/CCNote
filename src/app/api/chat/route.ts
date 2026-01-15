@@ -8,11 +8,22 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const { messages, canvasElements } = await req.json();
 
-  console.log("Recieved messages:", messages.length, "Canvas elements:", canvasElements?.length || 0);
+  console.log("Received messages:", messages.length, "Canvas elements:", canvasElements?.length || 0);
+
+  // SECURITY: Limit payload size to prevent DoS/cost overruns
+  const MAX_ELEMENTS = 100;
+  let truncatedElements = canvasElements || [];
+  let wasTruncated = false;
+  
+  if (truncatedElements.length > MAX_ELEMENTS) {
+    console.warn(`[API] Truncating ${truncatedElements.length} elements to ${MAX_ELEMENTS}`);
+    truncatedElements = truncatedElements.slice(0, MAX_ELEMENTS);
+    wasTruncated = true;
+  }
 
   // Build a summary of existing nodes for the AI
-  const nodesSummary = canvasElements?.length 
-    ? `\n\nCurrent Canvas Nodes (${canvasElements.length} total):\n${canvasElements.map((el: any) => 
+  const nodesSummary = truncatedElements.length 
+    ? `\n\nCurrent Canvas Nodes (${truncatedElements.length} total${wasTruncated ? ` - showing first ${MAX_ELEMENTS} of ${canvasElements.length}` : ''}):\n${truncatedElements.map((el: any) => 
         `- [ID: ${el.id}] "${el.content?.substring(0, 100) || '(empty)'}" (type: ${el.type}, color: ${el.color || 'default'})`
       ).join('\n')}`
     : '\n\nThe canvas is currently empty.';

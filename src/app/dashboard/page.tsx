@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CanvasProvider } from "@/context/CanvasContext";
+import { ToastProvider } from "@/components/Toast";
 import { SystemBar } from "@/components/SystemBar";
 import { CanvasEditor } from "@/components/CanvasEditor";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -20,27 +21,29 @@ export default function DashboardPage() {
   };
 
   return (
-    <CanvasProvider>
-      <div className={`bg-[#0a0b10] font-display text-[#eca013] overflow-hidden scanlines-container h-screen relative selection:bg-[#eca013] selection:text-[#0a0b10] transition-all duration-500 ${isShuttingDown ? 'animate-turn-off' : ''}`}>
-        
-        {/* CRT Overlays for Consistent Theme */}
-        <div className="scanlines"></div>
-        <div className="crt-overlay-anim"></div>
-        <div className="vignette"></div>
+    <ToastProvider>
+      <CanvasProvider>
+        <div className={`bg-[#0a0b10] font-display text-[#eca013] overflow-hidden scanlines-container h-screen relative selection:bg-[#eca013] selection:text-[#0a0b10] transition-all duration-500 ${isShuttingDown ? 'animate-turn-off' : ''}`}>
+          
+          {/* CRT Overlays for Consistent Theme */}
+          <div className="scanlines"></div>
+          <div className="crt-overlay-anim"></div>
+          <div className="vignette"></div>
 
-        {/* Top-Mounted HUD (SystemBar) */}
-        <SystemBar onShutdown={handleShutdown} />
-        <CommandPalette onLogout={handleShutdown} />
+          {/* Top-Mounted HUD (SystemBar) */}
+          <SystemBar onShutdown={handleShutdown} />
+          <CommandPalette onLogout={handleShutdown} />
 
-        {/* Flickering Terminal Turn-On Container */}
-        <div className="pt-14 h-screen w-full animate-turn-on relative z-0 flex flex-col">
-          <CanvasEditor />
+          {/* Flickering Terminal Turn-On Container */}
+          <div className="pt-14 h-screen w-full animate-turn-on relative z-0 flex flex-col">
+            <CanvasEditor />
+          </div>
+          
+          {/* AI Assistant Overlay */}
+          <NeuralInterface />
+          
         </div>
-        
-        {/* AI Assistant Overlay */}
-        <NeuralInterface />
-        
-      </div>
-    </CanvasProvider>
+      </CanvasProvider>
+    </ToastProvider>
   );
 }

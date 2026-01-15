@@ -242,6 +242,7 @@ export function CanvasEditor() {
     setViewOffset({ x: 0, y: 0 });
     setZoom(1);
     setLocalPositions({});
+    setFilterTag(null);
   }, [activeCanvas?.id]);
 
   /* Removed problematic useEffect that caused race conditions */
