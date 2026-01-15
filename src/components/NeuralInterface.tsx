@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCanvas } from "@/context/CanvasContext";
@@ -78,6 +78,72 @@ export function NeuralInterface() {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState<string>('');
   const [showMicSettings, setShowMicSettings] = useState(false);
+
+  // Centralized Command Processor
+  const processLocalCommand = useCallback((text: string, isTyped: boolean): boolean => {
+      const lowerText = text.toLowerCase().trim();
+      let command = lowerText;
+      let isWakeWordDetected = false;
+
+      // Fuzzy Wake Word Check
+      const wakeWordRegex = /^(beepo|people|bepo|repo|deep oh|depot|bebo|bpo|depo|bibo|peepo)\b\s*/i;
+      const match = lowerText.match(wakeWordRegex);
+
+      if (match) {
+          command = lowerText.replace(wakeWordRegex, "").trim();
+          isWakeWordDetected = true;
+      }
+
+      // If voice: MUST have wake word. If typed: optional.
+      if (!isTyped && !isWakeWordDetected) return false;
+
+      console.log("[Command Processor] Input:", command);
+
+      if (command.includes("zoom in")) {
+          window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomIn' } }));
+          speak("Zooming in.");
+          return true;
+      } 
+      
+      if (command.includes("zoom out")) {
+          window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomOut' } }));
+          speak("Zooming out.");
+          return true;
+      } 
+      
+      if (command.startsWith("create note") || command.startsWith("create a note")) {
+          const content = command.replace(/create (a )?note/, "").trim();
+          if (content) {
+              window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'createNode', content } }));
+              speak(`Creating note: ${content}`);
+          } else {
+              speak("What should the note say?");
+          }
+          return true;
+      } 
+      
+      if (command.includes("help") || command.includes("commands")) {
+          speak("I can zoom, create notes, and connect ideas. Just ask.");
+          // Only show message if it wasn't already in chat (for voice)
+          setLocalMessages(prev => [...prev, { 
+              role: 'assistant', 
+              content: `**🎤 Beepo Commands**
+- "Zoom In" / "Zoom Out"
+- "Create Note [Text]"
+*(No wake word needed when typing!)*`,
+              source: '⚡ LOCAL'
+          }]);
+          return true;
+      }
+
+      // If we had a wake word but no valid command -> "Command not recognized"
+      if (isWakeWordDetected) {
+          speak("Command not recognized.");
+          return true; // We handled the "event" (by rejecting it), so don't send to AI
+      }
+
+      return false;
+  }, [speak]);
 
   // Enumerate available microphones
   useEffect(() => {
@@ -164,63 +230,25 @@ export function NeuralInterface() {
           
           if (result.isFinal) {
             console.log("[NeuralInterface] Final transcript:", transcript);
-            const lowerTranscript = transcript.toLowerCase().trim();
-
-            // Fuzzy Wake Word Check: "Beepo", "People", "Repo", "Deep oh", "Bepo"
-            // We strip the wake word to get the command.
-            const wakeWordRegex = /^(beepo|people|bepo|repo|deep oh|depot|bebo|bpo|depo|bibo|peepo)\b\s*/i;
-            const match = lowerTranscript.match(wakeWordRegex);
-
-            if (match) {
-                const command = lowerTranscript.replace(wakeWordRegex, "").trim();
-                console.log("[Voice Command]", command);
-                
-                if (command.includes("zoom in")) {
-                    window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomIn' } }));
-                    speak("Zooming in.");
-                } else if (command.includes("zoom out")) {
-                    window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'zoomOut' } }));
-                    speak("Zooming out.");
-                } else if (command.startsWith("create note") || command.startsWith("create a note")) {
-                    const content = command.replace(/create (a )?note/, "").trim();
-                    if (content) {
-                        window.dispatchEvent(new CustomEvent('canvas-action', { detail: { type: 'createNode', content } }));
-                        speak(`Creating note: ${content}`);
-                    } else {
-                        speak("What should the note say?");
-                    }
-                } else if (command.includes("help") || command.includes("commands")) {
-                    // List commands
-                    speak("I can zoom, create notes, and connect ideas. Just ask.");
-                    sendMessage({ 
-                        role: 'assistant', 
-                        content: `**🎤 Beepo Commands**
-- "Beepo **Zoom In**"
-- "Beepo **Zoom Out**"
-- "Beepo **Create Note [Text]**"
-*(Also responds to: 'Bebo', 'Depo', 'People', 'BPO')*` 
-                    });
-                } else {
-                    speak("Command not recognized.");
-                }
-                setInputInternal(""); // Clear input
-                return; // Don't send to chat
-            }
-
-            if (transcript.trim()) {
+            // Process voice command (requires wake word)
+            const handled = processLocalCommand(transcript, false);
+            
+            if (!handled && transcript.trim()) {
               sendMessage({ role: 'user', content: transcript });
-              setInputInternal(""); // Clear after sending
+              setInputInternal(""); 
               playConfirm();
             }
           }
         };
+
+
         
         recognitionRef.current = recognition;
       } else {
         console.warn("[NeuralInterface] Speech recognition not supported");
       }
     }
-  }, [sendMessage, playConfirm, speak]);
+  }, [sendMessage, playConfirm, speak, processLocalCommand]);
 
   // TTS and Auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -382,13 +410,21 @@ export function NeuralInterface() {
                             const query = inputInternal.trim();
                             setInputInternal("");
                             
+                            // 1. Try Local Command first (Zoom, Create Note, etc.) -> No AI
+                            // For text input, we enable "God Mode" - no wake word needed, just the command
+                            const isCommand = processLocalCommand(query, true); 
+                            
+                            if (isCommand) {
+                                // Handled locally, stop here.
+                                return;
+                            }
+
                             // Add user message to local display
                             setLocalMessages(prev => [...prev, { role: 'user', content: query }]);
                             
-                            // Try local knowledge first
+                            // 2. Try Local Knowledge (Q&A) -> No AI
                             const localAnswer = askQuestion(query);
                             if (localAnswer) {
-                              // Local answer found - no API call needed!
                               playHappyBeep?.();
                               setLocalMessages(prev => [...prev, { 
                                 role: 'assistant', 
@@ -397,7 +433,7 @@ export function NeuralInterface() {
                               }]);
                               speak(localAnswer.text);
                             } else {
-                              // No local answer - fall back to AI
+                              // 3. Fallback to Cloud AI
                               sendMessage({ role: 'user', content: query });
                             }
                         }}
