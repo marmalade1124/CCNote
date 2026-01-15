@@ -324,38 +324,44 @@ export function EmoRobot({
                     'shadow-[0_0_12px_rgba(57,255,20,0.8)]';
   const borderColor = isListening ? 'border-red-500/50' : isLoading ? 'border-yellow-500/50' : 'border-[#39ff14]/40';
 
+  const [isDragging, setIsDragging] = useState(false);
+
   return (
     <motion.div
       ref={robotRef}
       drag
       dragMomentum={false}
-      dragElastic={0}
-      dragConstraints={{ left: -500, right: 100, top: -400, bottom: 100 }}
+      dragElastic={0.05}
+      dragListener={false} // Disable drag on main container, only on handle
       onDragStart={() => {
         isDraggingRef.current = true;
+        setIsDragging(true);
       }}
       onDragEnd={(_, info) => {
-        // Small delay to prevent click from firing
         setTimeout(() => {
           isDraggingRef.current = false;
+          setIsDragging(false);
         }, 100);
         
-        // Mark that user dragged (prevents wandering for 30s)
         lastDragTimeRef.current = Date.now();
         
-        // Use the actual drag point offset from the animate position
-        let newX = position.x + info.offset.x;
-        let newY = position.y + info.offset.y;
-        
-        // Clamp to safe bounds
-        newX = Math.max(-500, Math.min(100, newX));
-        newY = Math.max(-400, Math.min(100, newY));
+        // Free movement - no constraints, just update position
+        const newX = position.x + info.offset.x;
+        const newY = position.y + info.offset.y;
         
         onPositionChange({ x: newX, y: newY });
       }}
-      className="fixed bottom-6 right-6 z-[130] cursor-grab active:cursor-grabbing"
-      animate={{ x: position.x, y: position.y }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="fixed bottom-6 right-6 z-[130]"
+      animate={{ 
+        x: position.x, 
+        y: position.y,
+        rotate: isDragging ? [-2, 2, -2] : 0, // Wobble when dragging
+      }}
+      transition={{ 
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        y: { type: "spring", stiffness: 300, damping: 30 },
+        rotate: { duration: 0.15, repeat: isDragging ? Infinity : 0 }
+      }}
     >
       {/* Speech Bubble */}
       <AnimatePresence>
@@ -463,6 +469,32 @@ export function EmoRobot({
         }`}
       >
         {isListening ? '● REC' : isLoading ? '◐ AI' : isOpen ? '◉ ON' : '○'}
+      </motion.div>
+      
+      {/* Drag Handle - only this area is draggable */}
+      <motion.div
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing px-3 py-1 rounded-full bg-[#39ff14]/10 border border-[#39ff14]/30 hover:bg-[#39ff14]/20 transition-colors"
+        onPointerDown={(e) => {
+          // This allows the parent motion.div to receive the drag
+          const parent = robotRef.current;
+          if (parent) {
+            parent.dispatchEvent(new PointerEvent('pointerdown', {
+              bubbles: true,
+              clientX: e.clientX,
+              clientY: e.clientY,
+              pointerId: e.pointerId,
+              pointerType: e.pointerType,
+            }));
+          }
+        }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <div className="flex items-center gap-1">
+          <span className="text-[#39ff14]/50 text-[8px]">⋮⋮</span>
+          <span className="text-[#39ff14]/40 text-[6px] font-mono uppercase">drag</span>
+          <span className="text-[#39ff14]/50 text-[8px]">⋮⋮</span>
+        </div>
       </motion.div>
     </motion.div>
   );

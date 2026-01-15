@@ -225,16 +225,17 @@ export function NeuralInterface() {
       <AnimatePresence>
         {isOpen && (
             <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                // True anchor: positioned same as robot base, offset up
-                // Robot is at bottom-6 right-6, we go bottom-24 right-6 (above it)
-                // Then transform by same amount as robot
-                className="fixed bottom-24 right-6 w-80 z-[120] font-mono"
-                style={{
-                  transform: `translate(${robotPosition.x}px, ${robotPosition.y}px)`
+                initial={{ opacity: 0, scale: 0.9, x: robotPosition.x, y: robotPosition.y }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1,
+                  x: robotPosition.x,
+                  y: robotPosition.y
                 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                // Positioned above robot's base position (bottom-6 right-6)
+                className="fixed bottom-28 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
