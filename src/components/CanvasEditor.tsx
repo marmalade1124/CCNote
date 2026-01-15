@@ -90,7 +90,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 }
 
 export function CanvasEditor() {
-  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool } = useCanvas();
+  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool, filterTag } = useCanvas();
   const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak, playMerge, playUngroup, playTrash } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -1571,8 +1571,8 @@ export function CanvasEditor() {
                                 backgroundColor: element.type === 'sticky' ? element.color : undefined,
                                 zIndex: isSelected ? 50 : (element.parentId ? 20 : 10),
                                 pointerEvents: 'auto',
-                                opacity: activeTag && !element.content.includes(activeTag) ? 0.1 : 1,
-                                filter: activeTag && !element.content.includes(activeTag) ? 'grayscale(100%) blur(1px)' : 'none',
+                                opacity: filterTag && !element.content.includes(filterTag) ? 0.1 : 1,
+                                filter: filterTag && !element.content.includes(filterTag) ? 'grayscale(100%) blur(1px)' : 'none',
                                 transition: 'all 0.2s ease-out, opacity 0.3s ease-in-out, filter 0.3s'
                             }}
                             onMouseDown={(e) => handleElementMouseDown(e, element)}

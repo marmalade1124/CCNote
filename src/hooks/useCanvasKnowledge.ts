@@ -224,6 +224,151 @@ export function useCanvasKnowledge() {
       };
     }
 
+    // Orphans (Unconnected nodes)
+    if (q.includes("orphan") || q.includes("unconnected") || q.includes("lonely")) {
+        const connectedIds = new Set<string>();
+        connections.forEach(c => { connectedIds.add(c.from); connectedIds.add(c.to); });
+        
+        const orphans = elements.filter(el => !connectedIds.has(el.id));
+        
+        if (orphans.length === 0) {
+            return { text: "No orphans! Every node is connected.", source: "local", confidence: "high" };
+        }
+        
+        const list = orphans.slice(0, 5).map(el => el.content?.split("\n")[0].slice(0, 30)).join(", ");
+        return {
+            text: `Found ${orphans.length} unconnected nodes:\n• ${list}${orphans.length > 5 ? "..." : ""}`,
+            source: "local",
+            confidence: "high"
+        };
+    }
+
+    // Pathfinding: "Path from A to B"
+    if (q.startsWith("path from") || q.startsWith("how to get from")) {
+        // Simple BFS
+        const terms = q.replace(/^(path from|how to get from)\s+/i, "").split(/\s+to\s+/i);
+        if (terms.length === 2) {
+            const startTerm = terms[0].trim();
+            const endTerm = terms[1].replace(/[?]/, "").trim();
+            
+            const startNode = elements.find(el => el.content?.toLowerCase().includes(startTerm));
+            const endNode = elements.find(el => el.content?.toLowerCase().includes(endTerm));
+            
+            if (!startNode || !endNode) {
+                return { text: "I couldn't identify the start or end node.", source: "local", confidence: "medium" };
+            }
+
+            // BFS
+            const queue: [string, string[]][] = [[startNode.id, [startNode.content?.split("\n")[0] || "Start"]]];
+            const visited = new Set<string>([startNode.id]);
+            
+            while (queue.length > 0) {
+                const [currentId, path] = queue.shift()!;
+                if (currentId === endNode.id) {
+                    return { 
+                        text: `Path found (${path.length} steps):\n${path.join(" ➔ ")}`, 
+                        source: "local", 
+                        confidence: "high" 
+                    };
+                }
+                
+                // Get neighbors
+                const neighbors = connections
+                    .filter(c => c.from === currentId || c.to === currentId)
+                    .map(c => c.from === currentId ? c.to : c.from);
+                
+                for (const nId of neighbors) {
+                    if (!visited.has(nId)) {
+                        visited.add(nId);
+                        const n = elements.find(el => el.id === nId);
+                        queue.push([nId, [...path, n?.content?.split("\n")[0] || "Unknown"]]);
+                    }
+                }
+            }
+             return { text: `No path found between "${startTerm}" and "${endTerm}".`, source: "local", confidence: "high" };
+        }
+    }
+
+    // Tags: "Show tags" or "List tags"
+    if (q.includes("tag") && (q.includes("show") || q.includes("list") || q.includes("what"))) {
+        const tagCounts: Record<string, number> = {};
+        elements.forEach(el => {
+            const matches = el.content?.match(/#[\w-]+/g);
+            if (matches) {
+                matches.forEach(tag => {
+                    const t = tag.toLowerCase();
+                    tagCounts[t] = (tagCounts[t] || 0) + 1;
+                });
+            }
+        });
+
+        const sortedTags = Object.entries(tagCounts)
+            .sort(([,a], [,b]) => b - a)
+            .map(([tag, count]) => `${tag} (${count})`);
+
+        if (sortedTags.length === 0) {
+            return { text: "I don't see any #hashtags on this canvas.", source: "local", confidence: "high" };
+        }
+
+        return {
+            text: `Found ${sortedTags.length} tags:\n• ${sortedTags.join("\n• ")}`,
+            source: "local",
+            confidence: "high"
+        };
+    }
+
+    // Filter by Tag: "Show items with #todo"
+    if ((q.includes("with") || q.includes("show") || q.includes("find")) && q.includes("#")) {
+        const match = q.match(/#[\w-]+/);
+        if (match) {
+            const tag = match[0].toLowerCase();
+            const taggedElements = elements.filter(el => el.content?.toLowerCase().includes(tag));
+            
+            if (taggedElements.length === 0) {
+                return { text: `No items found with tag "${tag}".`, source: "local", confidence: "high" };
+            }
+
+            const list = taggedElements.slice(0, 5).map(el => el.content?.split("\n")[0].slice(0, 30)).join("\n• ");
+            return {
+                text: `Found ${taggedElements.length} items tagged "${tag}":\n• ${list}${taggedElements.length > 5 ? "\n...and more" : ""}`,
+                source: "local",
+                confidence: "high"
+            };
+        }
+    }
+
+    // Type Filtering: "Show sticky notes", "List images"
+    const typeMap: Record<string, string> = {
+        "sticky": "sticky", "note": "sticky",
+        "card": "card",
+        "text": "text",
+        "image": "image", "picture": "image", "photo": "image",
+        "folder": "folder", "group": "folder"
+    };
+    
+    // Check if query asks for a specific type
+    const requestedType = Object.keys(typeMap).find(t => q.includes(t) && (q.includes("show") || q.includes("list") || q.includes("only")));
+    
+    if (requestedType) {
+        const targetType = typeMap[requestedType];
+        const filtered = elements.filter(el => el.type === targetType || (targetType === 'sticky' && el.type === 'sticky')); // 'sticky' type in DB might be 'sticky' or 'note' depending on legacy, but types.ts says 'sticky'
+        
+        if (filtered.length === 0) {
+            return { text: `No ${requestedType}s found on this canvas.`, source: "local", confidence: "high" };
+        }
+
+        const list = filtered.slice(0, 5).map(el => {
+            const text = el.content?.split("\n")[0].slice(0, 30) || (el.type === 'image' ? '[Image]' : 'Untitled');
+            return text;
+        }).join("\n• ");
+
+        return {
+            text: `Found ${filtered.length} ${requestedType}s:\n• ${list}${filtered.length > 5 ? "\n...and more" : ""}`,
+            source: "local",
+            confidence: "high"
+        };
+    }
+
     // Unknown - suggest local help
     return null; // Return null to indicate we don't know, can fallback to AI
   }, [activeCanvas, getNodeTitles, searchContent, getConnectionsFor]);

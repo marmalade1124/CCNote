@@ -10,10 +10,10 @@ import { useSmartLinks } from "@/hooks/useSmartLinks";
 import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
-  const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
+  const { addElement, updateElement, addConnection, activeCanvas, filterTag, setFilterTag } = useCanvas();
   const { playClick, playConfirm, speak, playRobotBeep, playGiggle, playHappyBeep, playSadBeep, playExcitedBeep, playCuriousBeep } = useSfx();
   const { askQuestion } = useCanvasKnowledge();
-  const [localMessages, setLocalMessages] = useState<{role: string; content: string; source?: string}[]>([]);
+  const [localMessages, setLocalMessages] = useState<{role: string; content: string; source?: string; createdAt: number}[]>([]);
 
   const { messages, sendMessage, isLoading, addToolResult, error } = (useChat as any)({
     body: {
@@ -111,6 +111,29 @@ export function NeuralInterface() {
           speak("Zooming out.");
           return true;
       } 
+
+      // Tag Filtering: "Focus #todo", "Toggle #urgent", "Show only #ideas"
+      if ((command.startsWith("focus") || command.startsWith("toggle") || command.includes("show only")) && command.includes("#")) {
+          const match = command.match(/#[\w-]+/);
+          if (match) {
+              const tag = match[0].toLowerCase();
+              if (filterTag === tag) {
+                  setFilterTag(null);
+                  speak(`Clearing filter for ${tag}.`);
+              } else {
+                  setFilterTag(tag);
+                  speak(`Focusing on ${tag}.`);
+              }
+              return true;
+          }
+      }
+
+      // Clear Filter: "Clear tags", "Show all", "Reset view"
+      if (command.includes("clear tag") || command.includes("show all") || command.includes("reset view") || command.includes("unfilter")) {
+          setFilterTag(null);
+          speak("Showing all items.");
+          return true;
+      }
       
       if (command.startsWith("create note") || command.startsWith("create a note")) {
           const content = command.replace(/create (a )?note/, "").trim();
@@ -324,41 +347,22 @@ export function NeuralInterface() {
                         </div>
                     )}
                     
-                    {/* Show local messages first */}
-                    {localMessages.map((m, i) => (
+                    {/* Combined Message Stream */}
+                    {[
+                        ...localMessages, 
+                        ...messages.map((m: any) => ({ ...m, createdAt: m.createdAt ? new Date(m.createdAt).getTime() : Date.now() }))
+                    ].sort((a: any, b: any) => (a.createdAt || 0) - (b.createdAt || 0)).map((m: any, i: number) => (
                         <motion.div 
-                            key={`local-${i}`}
-                            initial={{ opacity: 0, x: m.role === 'user' ? 10 : -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className={`p-2 rounded max-w-[90%] text-xs relative ${
-                                m.role === 'user' 
-                                    ? 'ml-auto bg-[#39ff14]/10 border border-[#39ff14]/40 text-[#39ff14]'
-                                    : 'bg-[#222] border border-[#39ff14]/20 text-[#39ff14]/80'
-                            }`}
-                        >
-                            <div className="whitespace-pre-wrap break-words overflow-hidden">{m.content}</div>
-                            <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
-                                {m.role === 'user' ? 'USER_CMD' : m.source || 'AI_CORE'}
-                            </div>
-                        </motion.div>
-                    ))}
-                    
-                    {/* Error Banner */}
-                    {error && (
-                        <div className="bg-red-500/10 border border-red-500/50 p-2 rounded text-red-500 text-xs font-mono mb-2">
-                            ERROR: {error.message}
-                        </div>
-                    )}
-
-                    {messages.map((m: any, i: number) => (
-                        <motion.div 
-                            key={i}
+                            key={m.id || `msg-${i}`}
                             initial={{ opacity: 0, x: m.role === 'user' ? 10 : -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             className={`p-2 rounded max-w-[90%] text-xs relative ${
                                 m.role === 'user' 
                                 ? 'self-end bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/20' 
                                 : 'self-start bg-[#eca013]/10 text-[#eca013] border border-[#eca013]/20'
+                            } ${
+                                // Different style for local fallback/offline messages
+                                (m.source === '🚫 OFFLINE' || m.source === '⚡ LOCAL') ? '!bg-[#222] !border-[#39ff14]/20 !text-[#39ff14]/80' : ''
                             }`}
                         >
                             {/* Render content - handle both direct content and parts array */}
@@ -368,7 +372,7 @@ export function NeuralInterface() {
                                ''}
                             </div>
                             
-                            {/* Render Tool Invocations */}
+                            {/* Render Tool Invocations (Only for AI messages) */}
                             {(m as any).toolInvocations?.map((toolInv: any, toolIndex: number) => (
                                 <div key={toolIndex} className="mt-1 bg-[#39ff14]/5 border border-[#39ff14]/20 rounded p-1 text-[10px] font-mono">
                                     <div className="flex items-center gap-1 opacity-70">
@@ -387,7 +391,7 @@ export function NeuralInterface() {
                             ))}
 
                             <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
-                                {m.role === 'user' ? 'USER_CMD' : 'AI_CORE'}
+                                {m.role === 'user' ? 'USER_CMD' : m.source || 'AI_CORE'}
                             </div>
                         </motion.div>
                     ))}
@@ -438,7 +442,7 @@ export function NeuralInterface() {
                             }
 
                             // Add user message to local display
-                            setLocalMessages(prev => [...prev, { role: 'user', content: query }]);
+                            setLocalMessages(prev => [...prev, { role: 'user', content: query, createdAt: Date.now() }]);
                             
                             // 2. Try Local Knowledge (Q&A) -> No AI
                             const localAnswer = askQuestion(query);
@@ -447,7 +451,8 @@ export function NeuralInterface() {
                               setLocalMessages(prev => [...prev, { 
                                 role: 'assistant', 
                                 content: localAnswer.text, 
-                                source: '⚡ LOCAL' 
+                                source: '⚡ LOCAL',
+                                createdAt: Date.now()
                               }]);
                               speak(localAnswer.text);
                             } else {
@@ -460,7 +465,8 @@ export function NeuralInterface() {
                                   setLocalMessages(prev => [...prev, { 
                                       role: 'assistant', 
                                       content: msg, 
-                                      source: '🚫 OFFLINE' 
+                                      source: '🚫 OFFLINE',
+                                      createdAt: Date.now()
                                   }]);
                                   speak("Cloud AI is disabled.");
                               }

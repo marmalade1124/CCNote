@@ -25,6 +25,8 @@ interface CanvasContextType {
   updateUser: (updates: { full_name?: string }) => Promise<void>;
   activeTool: CanvasTool;
   setActiveTool: (tool: CanvasTool) => void;
+  filterTag: string | null;
+  setFilterTag: (tag: string | null) => void;
 }
 
 const CanvasContext = createContext<CanvasContextType | null>(null);
@@ -73,6 +75,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
 
   const [user, setUser] = useState<any | null>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>("select");
+  const [filterTag, setFilterTag] = useState<string | null>(null);
 
   // Fetch all canvases from Supabase
   const refreshCanvases = useCallback(async () => {
@@ -533,6 +536,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         updateUser,
         activeTool,
         setActiveTool,
+        filterTag,
+        setFilterTag,
       }}
     >
       {children}
