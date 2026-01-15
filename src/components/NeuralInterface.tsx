@@ -151,20 +151,7 @@ export function NeuralInterface() {
           }
           // 'no-speech' is common in continuous mode, we just let it restart via onend
         };
-          // Stop on critical errors
-          if (event.error === 'aborted' || event.error === 'not-allowed' || event.error === 'network') {
-            setIsListening(false);
-            shouldListenRef.current = false;
-            
-            if (event.error === 'network') {
-              console.error("[NeuralInterface] Network error - check your internet connection. Speech API requires online access.");
-              // Show error in input field
-              setInputInternal("⚠️ Network error - check internet connection");
-              setTimeout(() => setInputInternal(""), 3000);
-            }
-          }
-          // 'no-speech' errors are fine, will auto-restart via onend
-        };
+
         recognition.onresult = (event: any) => {
           const result = event.results[event.results.length - 1];
           const transcript = result[0].transcript;
@@ -215,7 +202,7 @@ export function NeuralInterface() {
         console.warn("[NeuralInterface] Speech recognition not supported");
       }
     }
-  }, [sendMessage, playConfirm]);
+  }, [sendMessage, playConfirm, speak]);
 
   // TTS and Auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
