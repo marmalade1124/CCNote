@@ -216,27 +216,34 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - FIXED (no cursor follow)
+  // Hover detection for wiki links - DEBUG MODE
   useEffect(() => {
     let lastCallTime = 0;
-    const throttleMs = 100; // Increased to 100ms for better performance
+    const throttleMs = 100;
+    
+    console.log('[HOVER INIT] Setting up hover detection...');
     
     const handleMouseMove = (e: MouseEvent) => {
-      // Skip if preview is already showing (prevent cursor following!)
-      if (hoveredLink) return;
-      
-      // Throttle: Skip if called too recently
+      // Throttle check
       const now = Date.now();
       if (now - lastCallTime < throttleMs) return;
       lastCallTime = now;
+      
+      // REMOVED: if (hoveredLink) return; // This was breaking it!
       
       // Clear existing timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
       
-      // Look for ANY element with [[wiki links]]
       const target = e.target as HTMLElement;
+      console.log('[HOVER] Mouse at:', {
+        x: e.clientX,
+        y: e.clientY,
+        targetTag: target.tagName,
+        targetClass: String(target.className || '').substring(0, 30)
+      });
+      
       let noteElement: HTMLElement | null = target;
       let attempts = 0;
       const maxAttempts = 20;
@@ -245,16 +252,20 @@ export function CanvasEditor() {
       while (noteElement && attempts < maxAttempts) {
         const textContent = noteElement.textContent || '';
         
-        // Check if this element contains [[wiki links]]
         if (textContent.includes('[[') && textContent.includes(']]')) {
+          console.log(`[HOVER] Level ${attempts}: Found [[ and ]], checking for matches...`);
+          
           const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
           
           if (linkMatches.length > 0) {
             foundLink = true;
             const firstLink = linkMatches[0][1];
             
-            // Show preview after delay - position is LOCKED here!
+            console.log(`[HOVER] FOUND LINK at level ${attempts}:`, firstLink);
+            console.log('[HOVER] Setting timeout to show preview...');
+            
             hoverTimeoutRef.current = setTimeout(() => {
+              console.log('[HOVER] TIMEOUT FIRED - Setting preview state for:', firstLink);
               setHoveredLink({
                 text: firstLink,
                 position: { x: e.clientX + 20, y: e.clientY + 20 }
@@ -268,13 +279,14 @@ export function CanvasEditor() {
         attempts++;
       }
       
-      // Clear preview if no links found
       if (!foundLink) {
+        console.log(`[HOVER] No links found after ${attempts} levels - clearing`);
         setHoveredLink(null);
       }
     };
     
     const handleMouseLeave = () => {
+      console.log('[HOVER] Mouse left window');
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
@@ -283,15 +295,17 @@ export function CanvasEditor() {
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
+    console.log('[HOVER INIT] Listeners attached!');
     
     return () => {
+      console.log('[HOVER CLEANUP] Removing listeners');
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
     };
-  }, [hoveredLink]); // Add dependency so it knows when preview is showing
+  }, []); // NO DEPENDENCIES - was the bug!
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });

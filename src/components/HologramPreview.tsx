@@ -14,6 +14,8 @@ export function HologramPreview({ linkText, position, onNavigate }: HologramPrev
   const { activeCanvas } = useCanvas();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
+  console.log('[HOLOGRAM RENDER] Rendering for:', linkText, 'at:', position);
+  
   // Find the linked element
   const linkedElement = activeCanvas?.elements.find(el => {
     if (el.type === 'card' && el.content.startsWith(linkText + '||')) return true;
