@@ -75,7 +75,6 @@ export function NeuralInterface() {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState<string>('');
   const [showMicSettings, setShowMicSettings] = useState(false);
-  const [robotPosition, setRobotPosition] = useState({ x: 0, y: 0 });
 
   // Enumerate available microphones
   useEffect(() => {
@@ -225,17 +224,12 @@ export function NeuralInterface() {
       <AnimatePresence>
         {isOpen && (
             <motion.div 
-                initial={{ opacity: 0, scale: 0.9, x: robotPosition.x, y: robotPosition.y }}
-                animate={{ 
-                  opacity: 1, 
-                  scale: 1,
-                  x: robotPosition.x,
-                  y: robotPosition.y
-                }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                // Positioned above robot's base position (bottom-6 right-6)
-                className="fixed bottom-28 right-6 w-80 z-[120] font-mono"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                // Fixed position above the robot (robot is at bottom-6 right-6)
+                className="fixed bottom-32 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
@@ -416,14 +410,15 @@ export function NeuralInterface() {
         )}
       </AnimatePresence>
 
-      {/* Settings Gear Button - stays fixed in bottom right */}
+      {/* Settings Gear Button - top right */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-4 right-4 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
-        whileHover={{ scale: 1.1, rotate: 90 }}
+        className="fixed top-16 right-4 z-[125] p-2 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/80 rounded-lg border border-[#39ff14]/20 hover:border-[#39ff14]/50"
+        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        title="Microphone Settings"
       >
-        <span className="material-symbols-outlined text-xs">settings</span>
+        <span className="material-symbols-outlined text-sm">settings_voice</span>
       </motion.button>
 
       {/* EMO-style Robot Trigger */}
@@ -436,11 +431,6 @@ export function NeuralInterface() {
         onBeep={playRobotBeep}
         onGiggle={playGiggle}
         onHappyBeep={playHappyBeep}
-        onSadBeep={playSadBeep}
-        onExcitedBeep={playExcitedBeep}
-        onCuriousBeep={playCuriousBeep}
-        position={robotPosition}
-        onPositionChange={setRobotPosition}
       />
     </>
   );
