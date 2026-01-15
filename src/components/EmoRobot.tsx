@@ -136,11 +136,16 @@ export function EmoRobot({
       }
       
       // Get safe bounds (keep robot visible on screen)
-      // Robot is fixed to bottom-right, so negative X/Y moves it left/up
-      const maxX = 150;  // Max pixels to move left
-      const minX = -50;  // Max pixels to move right (limited by screen edge)
-      const maxY = 100;  // Max pixels to move up  
-      const minY = -30;  // Max pixels to move down (limited by screen edge)
+      // Robot is fixed bottom-right with animate={{ x, y }}
+      // NEGATIVE X = moves LEFT (into viewport) ✓
+      // POSITIVE X = moves RIGHT (off screen) ✗
+      // NEGATIVE Y = moves UP (into viewport) ✓  
+      // POSITIVE Y = moves DOWN (off screen) ✗
+      // So we want mostly NEGATIVE values to keep it visible
+      const minX = -200;  // Max 200px left into viewport
+      const maxX = 0;     // Don't go right (off screen)
+      const minY = -150;  // Max 150px up into viewport
+      const maxY = 0;     // Don't go down (off screen)
       
       const newX = minX + Math.random() * (maxX - minX);
       const newY = minY + Math.random() * (maxY - minY);
@@ -333,10 +338,9 @@ export function EmoRobot({
         let newY = position.y + info.offset.y;
         
         // Clamp to safe bounds (prevent going off screen)
-        // Positive X = moves left, Negative X = moves right (off screen)
-        // Positive Y = moves up, Negative Y = moves down (off screen)
-        newX = Math.max(-100, Math.min(300, newX));  // -100 to 300 pixels horizontal
-        newY = Math.max(-100, Math.min(200, newY));  // -100 to 200 pixels vertical
+        // NEGATIVE values keep it on screen, POSITIVE values push it off
+        newX = Math.max(-400, Math.min(50, newX));  // -400 (far left) to 50 (slightly right only)
+        newY = Math.max(-300, Math.min(50, newY));  // -300 (far up) to 50 (slightly down only)
         
         onPositionChange({ x: newX, y: newY });
       }}
