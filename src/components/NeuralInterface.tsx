@@ -96,6 +96,13 @@ export function NeuralInterface() {
     getMicrophones();
   }, []);
 
+  // Listen for mic settings toggle from SystemBar
+  useEffect(() => {
+    const handleToggle = () => setShowMicSettings(prev => !prev);
+    window.addEventListener('toggle-mic-settings', handleToggle);
+    return () => window.removeEventListener('toggle-mic-settings', handleToggle);
+  }, []);
+
   // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -410,16 +417,7 @@ export function NeuralInterface() {
         )}
       </AnimatePresence>
 
-      {/* Settings Gear Button - top right */}
-      <motion.button
-        onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed top-16 right-4 z-[125] p-2 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/80 rounded-lg border border-[#39ff14]/20 hover:border-[#39ff14]/50"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        title="Microphone Settings"
-      >
-        <span className="material-symbols-outlined text-sm">settings_voice</span>
-      </motion.button>
+
 
       {/* EMO-style Robot Trigger */}
       <EmoRobot

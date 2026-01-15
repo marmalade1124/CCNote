@@ -100,6 +100,19 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                 <span className="material-symbols-outlined text-[18px]">hub</span>
              </button>
 
+             {/* Mic Settings Toggle */}
+             <button
+                onClick={() => { 
+                  playClick(); 
+                  window.dispatchEvent(new CustomEvent('toggle-mic-settings'));
+                }}
+                onMouseEnter={playHover}
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                title="Microphone Settings"
+             >
+                <span className="material-symbols-outlined text-[18px]">settings_voice</span>
+             </button>
+
              {/* Game Toggle */}
              <button
                 onClick={() => { playClick(); setIsGameOpen(true); }}
