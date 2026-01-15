@@ -286,17 +286,15 @@ export function CanvasEditor() {
         return;
       }
       
-      // No link found - debounced clear (don't clear immediately!)
+      // No link found - CLEAR IMMEDIATELY
       if (currentLinkRef.current !== null) {
-        clearTimeoutRef.current = setTimeout(() => {
-          currentLinkRef.current = null;
-          previewPositionRef.current = null;
-          if (hoverTimeoutRef.current) {
-            clearTimeout(hoverTimeoutRef.current);
-            hoverTimeoutRef.current = null;
-          }
-          setHoveredLink(null);
-        }, 100); // Small delay before clearing
+        currentLinkRef.current = null;
+        previewPositionRef.current = null;
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
+        }
+        setHoveredLink(null);
       }
     };
     
