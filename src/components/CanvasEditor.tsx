@@ -313,12 +313,38 @@ export function CanvasEditor() {
       setHoveredLink(null);
     };
     
+    // IMPORTANT: Clear preview on click anywhere (click doesn't trigger mousemove!)
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if clicked on a wiki link anchor
+      const anchorElement = target.closest('a[href^="#"]');
+      if (anchorElement) return; // Don't clear if clicking a link
+      
+      // Check if clicked on raw [[link]] text
+      const text = target.textContent || '';
+      if (text.match(/\[\[([^\[\]]+)\]\]/)) return; // Don't clear if clicking link text
+      
+      // Clear the preview
+      if (currentLinkRef.current !== null || hoverTimeoutRef.current) {
+        currentLinkRef.current = null;
+        previewPositionRef.current = null;
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
+        }
+        setHoveredLink(null);
+      }
+    };
+    
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('click', handleClick);
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('click', handleClick);
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
       if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
     };
