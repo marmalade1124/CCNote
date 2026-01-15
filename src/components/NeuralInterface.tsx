@@ -225,20 +225,19 @@ export function NeuralInterface() {
       <AnimatePresence>
         {isOpen && (
             <motion.div 
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 300, opacity: 0 }}
-                className="fixed w-80 z-[120] font-mono"
-                style={{ 
-                  // Calculate position based on robot
-                  // Robot.x is negative = moved left, positive = moved right
-                  bottom: `calc(5rem + ${-robotPosition.y}px)`,
-                  // If robot moved far left (x < -150), position from left instead
-                  ...(robotPosition.x < -150 
-                    ? { left: `calc(5rem + ${-robotPosition.x - 350}px)` }
-                    : { right: `calc(5rem + ${-robotPosition.x}px)` }
-                  )
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1,
+                  // True anchor: same position as robot + offset above it
+                  x: robotPosition.x,
+                  y: robotPosition.y
                 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                // Same base position as robot (bottom-6 right-6) 
+                // but offset up and left to appear above/beside it
+                className="fixed bottom-24 right-6 w-80 z-[120] font-mono"
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
@@ -422,11 +421,13 @@ export function NeuralInterface() {
       {/* Settings Gear Button */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-10 right-20 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
-        style={{
-          // Robot uses negative values, so negate them to match movement
-          transform: `translate(${robotPosition.x}px, ${-robotPosition.y}px)`
+        className="fixed bottom-4 right-20 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
+        animate={{
+          // True anchor: same position as robot
+          x: robotPosition.x,
+          y: robotPosition.y
         }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.95 }}
       >
