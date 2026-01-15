@@ -90,7 +90,7 @@ function isOverlapping(a: {x: number, y: number, width: number, height: number},
 }
 
 export function CanvasEditor() {
-  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool, filterTag } = useCanvas();
+  const { activeCanvas, addElement, updateElement, updateElements, deleteElement, addConnection, deleteConnection, activeTool, setActiveTool, filterTag, setFilterTag } = useCanvas();
   const { playClick, playHover, playConfirm, playConnect, playTyping, playBoot, speak, playMerge, playUngroup, playTrash } = useSfx();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -1767,10 +1767,10 @@ export function CanvasEditor() {
                   {availableTags.map(tag => (
                       <button
                           key={tag}
-                          onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                          onClick={() => setFilterTag(filterTag === tag ? null : tag)}
                           className={`
                               px-2 py-1 rounded text-xs font-mono transition-all border
-                              ${activeTag === tag 
+                              ${filterTag === tag 
                                   ? "bg-[#eca013] text-[#0a0b10] border-[#eca013] shadow-[0_0_10px_rgba(236,160,19,0.5)] translate-x-1" 
                                   : "bg-[#0a0b10]/80 text-[#eca013]/70 border-[#eca013]/20 hover:border-[#eca013]/50 hover:text-[#eca013]"
                               }
@@ -1779,9 +1779,9 @@ export function CanvasEditor() {
                           {tag}
                       </button>
                   ))}
-                  {activeTag && (
+                  {filterTag && (
                       <button 
-                          onClick={() => setActiveTag(null)}
+                          onClick={() => setFilterTag(null)}
                           className="mt-2 text-[10px] text-[#eca013]/50 hover:text-[#eca013] uppercase tracking-wider pl-1"
                       >
                           [RESET_LENS]

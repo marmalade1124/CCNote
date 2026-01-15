@@ -197,13 +197,14 @@ export function EmoRobot({
       <AnimatePresence>
         {speechBubble && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.8 }}
-            className="absolute -top-16 left-1/2 -translate-x-1/2 bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg px-3 py-2 text-[11px] text-[#39ff14] whitespace-nowrap shadow-[0_0_15px_rgba(57,255,20,0.2)]"
+            initial={{ opacity: 0, x: -10, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -10, scale: 0.8 }}
+            className="absolute right-[120%] top-1/2 -translate-y-1/2 bg-[#0a0b10] border border-[#39ff14]/50 rounded-lg px-3 py-2 text-[11px] text-[#39ff14] whitespace-nowrap shadow-[0_0_15px_rgba(57,255,20,0.2)]"
           >
             {speechBubble}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-[#39ff14]/50" />
+            {/* Arrow pointing right (towards robot) */}
+            <div className="absolute top-1/2 -translate-y-1/2 -right-2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-[#39ff14]/50" />
           </motion.div>
         )}
       </AnimatePresence>

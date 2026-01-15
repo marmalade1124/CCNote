@@ -112,8 +112,8 @@ export function NeuralInterface() {
           return true;
       } 
 
-      // Tag Filtering: "Focus #todo", "Toggle #urgent", "Show only #ideas"
-      if ((command.startsWith("focus") || command.startsWith("toggle") || command.includes("show only")) && command.includes("#")) {
+      // Tag Filtering: "Focus #todo", "Toggle #urgent", "Show only #ideas", "Untoggle #tag"
+      if ((command.startsWith("focus") || command.startsWith("toggle") || command.startsWith("untoggle") || command.includes("show only")) && command.includes("#")) {
           const match = command.match(/#[\w-]+/);
           if (match) {
               const tag = match[0].toLowerCase();
