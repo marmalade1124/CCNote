@@ -226,18 +226,15 @@ export function NeuralInterface() {
         {isOpen && (
             <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ 
-                  opacity: 1, 
-                  scale: 1,
-                  // True anchor: same position as robot + offset above it
-                  x: robotPosition.x,
-                  y: robotPosition.y
-                }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                // Same base position as robot (bottom-6 right-6) 
-                // but offset up and left to appear above/beside it
+                // True anchor: positioned same as robot base, offset up
+                // Robot is at bottom-6 right-6, we go bottom-24 right-6 (above it)
+                // Then transform by same amount as robot
                 className="fixed bottom-24 right-6 w-80 z-[120] font-mono"
+                style={{
+                  transform: `translate(${robotPosition.x}px, ${robotPosition.y}px)`
+                }}
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
@@ -418,16 +415,10 @@ export function NeuralInterface() {
         )}
       </AnimatePresence>
 
-      {/* Settings Gear Button */}
+      {/* Settings Gear Button - stays fixed in bottom right */}
       <motion.button
         onClick={() => setShowMicSettings(!showMicSettings)}
-        className="fixed bottom-4 right-20 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
-        animate={{
-          // True anchor: same position as robot
-          x: robotPosition.x,
-          y: robotPosition.y
-        }}
-        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className="fixed bottom-4 right-4 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.95 }}
       >
