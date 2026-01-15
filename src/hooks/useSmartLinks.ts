@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { pipeline } from '@xenova/transformers';
+import { pipeline, env } from '@xenova/transformers';
 import { useDebounce } from './useDebounce';
 import { useCanvas } from '@/context/CanvasContext';
+
+// Force CDN usage to avoid 404s on local files that don't exist
+env.allowLocalModels = false;
+env.useBrowserCache = true;
 
 // Singleton for the pipeline
 let embeddingPipeline: any = null;

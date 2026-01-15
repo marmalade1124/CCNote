@@ -144,10 +144,13 @@ export function NeuralInterface() {
             shouldListenRef.current = false;
           }
           
+
           if (event.error === 'network') {
-               console.error("[NeuralInterface] Network error - check your internet connection.");
+               console.error("[NeuralInterface] Network error. If using Brave/Safari, check Privacy shields or blocking.");
                shouldListenRef.current = false; 
                setIsListening(false);
+               setInputInternal("⚠️ Browser blocked mic (try allowing or use Chrome)");
+               setTimeout(() => setInputInternal(""), 5000);
           }
           // 'no-speech' is common in continuous mode, we just let it restart via onend
         };
