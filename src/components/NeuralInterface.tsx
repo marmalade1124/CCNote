@@ -5,11 +5,14 @@ import { useChat } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCanvas } from "@/context/CanvasContext";
 import { useSfx } from "@/hooks/useSfx";
+import { useCanvasKnowledge } from "@/hooks/useCanvasKnowledge";
 import { EmoRobot } from "./EmoRobot";
 
 export function NeuralInterface() {
   const { addElement, updateElement, addConnection, activeCanvas } = useCanvas();
   const { playClick, playConfirm, speak, playRobotBeep, playGiggle, playHappyBeep, playSadBeep, playExcitedBeep, playCuriousBeep } = useSfx();
+  const { askQuestion } = useCanvasKnowledge();
+  const [localMessages, setLocalMessages] = useState<{role: string; content: string; source?: string}[]>([]);
 
   const { messages, sendMessage, isLoading, addToolResult, error } = (useChat as any)({
     body: {
@@ -227,18 +230,39 @@ export function NeuralInterface() {
                 exit={{ x: 300, opacity: 0 }}
                 className="fixed w-80 z-[120] font-mono"
                 style={{ 
-                  bottom: `calc(5rem - ${robotPosition.y}px)`,
-                  right: `calc(1.5rem - ${robotPosition.x}px)`
+                  // Robot uses negative values to stay on screen
+                  // Robot at x:-200 means it moved 200px LEFT, so chat should also move left
+                  bottom: `calc(5rem + ${-robotPosition.y}px)`,
+                  right: `calc(5rem + ${-robotPosition.x}px)`
                 }}
             >
                 {/* Chat History Panel */}
                 <div className="mb-4 bg-[#0a0b10] border border-[#39ff14]/30 p-2 rounded-lg h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
-                    {messages.length === 0 && (
+                    {localMessages.length === 0 && messages.length === 0 && (
                         <div className="text-[#39ff14]/30 text-[10px] text-center mt-20 font-mono">
                             // NO_DATA_STREAM<br/>
                             // WAITING_FOR_INPUT...
                         </div>
                     )}
+                    
+                    {/* Show local messages first */}
+                    {localMessages.map((m, i) => (
+                        <motion.div 
+                            key={`local-${i}`}
+                            initial={{ opacity: 0, x: m.role === 'user' ? 10 : -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`p-2 rounded max-w-[90%] text-xs relative ${
+                                m.role === 'user' 
+                                    ? 'ml-auto bg-[#39ff14]/10 border border-[#39ff14]/40 text-[#39ff14]'
+                                    : 'bg-[#222] border border-[#39ff14]/20 text-[#39ff14]/80'
+                            }`}
+                        >
+                            <div className="whitespace-pre-wrap">{m.content}</div>
+                            <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
+                                {m.role === 'user' ? 'USER_CMD' : m.source || 'AI_CORE'}
+                            </div>
+                        </motion.div>
+                    ))}
                     
                     {/* Error Banner */}
                     {error && (
@@ -302,8 +326,28 @@ export function NeuralInterface() {
                         onSubmit={(e) => { 
                             e.preventDefault(); 
                             if (!inputInternal.trim()) return;
-                            sendMessage({ role: 'user', content: inputInternal }); 
-                            setInputInternal(""); 
+                            
+                            const query = inputInternal.trim();
+                            setInputInternal("");
+                            
+                            // Add user message to local display
+                            setLocalMessages(prev => [...prev, { role: 'user', content: query }]);
+                            
+                            // Try local knowledge first
+                            const localAnswer = askQuestion(query);
+                            if (localAnswer) {
+                              // Local answer found - no API call needed!
+                              playHappyBeep?.();
+                              setLocalMessages(prev => [...prev, { 
+                                role: 'assistant', 
+                                content: localAnswer.text, 
+                                source: '⚡ LOCAL' 
+                              }]);
+                              speak(localAnswer.text);
+                            } else {
+                              // No local answer - fall back to AI
+                              sendMessage({ role: 'user', content: query });
+                            }
                         }}
                         className="flex gap-2"
                     >
@@ -374,7 +418,8 @@ export function NeuralInterface() {
         onClick={() => setShowMicSettings(!showMicSettings)}
         className="fixed bottom-10 right-20 z-[125] p-1.5 text-[#39ff14]/50 hover:text-[#39ff14] transition-colors bg-[#0a0b10]/50 rounded-full"
         style={{
-          transform: `translate(${-robotPosition.x}px, ${robotPosition.y}px)`
+          // Robot uses negative values, so negate them to match movement
+          transform: `translate(${robotPosition.x}px, ${-robotPosition.y}px)`
         }}
         whileHover={{ scale: 1.1, rotate: 90 }}
         whileTap={{ scale: 0.95 }}
