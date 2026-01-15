@@ -115,6 +115,6 @@ export function useSmartLinks() {
   return {
     isReady,
     findSuggestions,
-    generatedCount: Object.keys(embeddings).length
+    generatedCount: embeddings ? Object.keys(embeddings).length : 0
   };
 }
