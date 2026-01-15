@@ -1422,8 +1422,8 @@ export function CanvasEditor() {
            {/* Transformed Content */}
            <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${zoom})`, transformOrigin: '0 0', willChange: 'transform', width: '100%', height: '100%', pointerEvents: (activeTool === 'pan' || (isDragging && panStartRef.current)) ? 'none' : 'auto' }} className={(activeTool === 'pan' || (isDragging && panStartRef.current)) ? '' : 'pointer-events-auto'}>
                
-                {/* Connections */}
-                <svg className="absolute top-0 left-0 overflow-visible w-full h-full pointer-events-none z-0">
+                {/* Connections - needs pointer-events for click-to-delete */}
+                <svg className="absolute top-0 left-0 overflow-visible w-full h-full z-0" style={{ pointerEvents: 'auto' }}>
                 <defs>
                     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
                     <polygon points="0 0, 10 3.5, 0 7" fill="#eca013" />
