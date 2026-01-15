@@ -1467,7 +1467,8 @@ export function CanvasEditor() {
                 onClick={(e) => { 
                     e.stopPropagation(); 
                     playClick();
-                    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+                    // Dispatch custom event for dashboard to catch
+                    window.dispatchEvent(new CustomEvent('open-quick-capture'));
                 }}
             >
                 <span className="material-symbols-outlined text-[20px]">add_circle</span>
@@ -1951,10 +1952,10 @@ export function CanvasEditor() {
       
       {/* Focus Mode Overlay */}
       {focusMode && focusedElementId && (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md animate-in fade-in duration-300">
-          {/* Exit Hint */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-10">
-            <div className="bg-[#39ff14]/10 border border-[#39ff14]/30 rounded px-6 py-3 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md animate-in fade-in duration-300">
+          {/* Exit Hint - Bottom Position to avoid SystemBar */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+            <div className="bg-[#39ff14]/10 border border-[#39ff14]/30 rounded px-6 py-3 backdrop-blur-sm shadow-[0_0_20px_rgba(57,255,20,0.3)]">
               <p className="text-[#39ff14] font-mono text-sm tracking-wider flex items-center gap-2">
                 <span className="material-symbols-outlined text-lg animate-pulse">center_focus_strong</span>
                 <span>FOCUS MODE ACTIVE</span>

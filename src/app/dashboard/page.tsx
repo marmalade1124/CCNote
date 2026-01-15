@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useHotkeys } from "react-hotkeys-hook";
 import { CanvasProvider } from "@/context/CanvasContext";
@@ -28,6 +28,13 @@ export default function DashboardPage() {
     e.preventDefault();
     setShowQuickCapture(true);
   }, { enableOnFormTags: true });
+  
+  // Listen for Quick Capture button click from toolbar
+  useEffect(() => {
+    const handleOpenQuickCapture = () => setShowQuickCapture(true);
+    window.addEventListener('open-quick-capture', handleOpenQuickCapture);
+    return () => window.removeEventListener('open-quick-capture', handleOpenQuickCapture);
+  }, []);
 
   const handleShutdown = () => {
     setIsShuttingDown(true);
