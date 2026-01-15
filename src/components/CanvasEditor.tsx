@@ -216,46 +216,61 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links
+  // Hover detection for wiki links - WITH DEBUG LOGGING
   useEffect(() => {
+    console.log('[HOVER] Setting up hover detection listener...');
+    
     const handleMouseMove = (e: MouseEvent) => {
       // Clear existing timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
       
-      // Check if hovering over text that contains [[wiki links]]
+      // Check if hovering over contentEditable element
       const target = e.target as HTMLElement;
-      const isContentEditable = target.closest('[contenteditable="true"]');
+      const contentEditableEl = target.closest('[contenteditable="true"]');
       
-      if (isContentEditable) {
-        const textContent = isContentEditable.textContent || '';
-        const linkRegex = /\[\[([^\]]+)\]\]/g;
-        let match;
+      console.log('[HOVER] Mouse move:', {
+        targetTag: target.tagName,
+        hasContentEditable: !!contentEditableEl,
+        textContent: contentEditableEl?.textContent?.substring(0, 50)
+      });
+      
+      if (contentEditableEl) {
+        const textContent = contentEditableEl.textContent || '';
+        console.log('[HOVER] Found contentEditable, checking for links in:', textContent.substring(0, 100));
         
-        while ((match = linkRegex.exec(textContent)) !== null) {
-          const linkText = match[1];
-          // Simple check: if we're hovering near text containing [[, show preview
-          // This is a simplified version - for production, you'd want more precise detection
-          if (textContent.includes(`[[${linkText}]]`)) {
-            hoverTimeoutRef.current = setTimeout(() => {
-              setHoveredLink({
-                text: linkText,
-                position: { x: e.clientX + 20, y: e.clientY + 20 }
-              });
-            }, 300); // 300ms delay
-            return;
-          }
+        // Find ALL [[wiki links]]
+        const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
+        console.log('[HOVER] Found', linkMatches.length, 'wiki link(s):', linkMatches.map(m => m[1]));
+        
+        if (linkMatches.length > 0) {
+          const firstLink = linkMatches[0][1];
+          console.log('[HOVER] Setting timeout to show preview for:', firstLink);
+          
+          // Show preview after delay
+          hoverTimeoutRef.current = setTimeout(() => {
+            console.log('[HOVER] SHOWING PREVIEW for:', firstLink);
+            setHoveredLink({
+              text: firstLink,
+              position: { x: e.clientX + 20, y: e.clientY + 20 }
+            });
+          }, 300);
+          return;
+        } else {
+          console.log('[HOVER] No wiki links found in this element');
         }
       }
       
-      // If not hovering over a link, clear after delay
+      // No links found, clear preview
       hoverTimeoutRef.current = setTimeout(() => {
+        console.log('[HOVER] Clearing hover state (no links)');
         setHoveredLink(null);
       }, 100);
     };
     
     const handleMouseLeave = () => {
+      console.log('[HOVER] Mouse left window, clearing');
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
@@ -264,8 +279,10 @@ export function CanvasEditor() {
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
+    console.log('[HOVER] Listeners attached to window');
     
     return () => {
+      console.log('[HOVER] Cleaning up listeners');
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
       if (hoverTimeoutRef.current) {
