@@ -241,11 +241,11 @@ export function CanvasEditor() {
         }
       }
       
-      // METHOD 2: Check raw [[link]] text (FOCUSED CARDS) - search deeper
+      // METHOD 2: Check raw [[link]] text (FOCUSED CARDS) - PRECISE detection
       if (!foundLinkName) {
         let searchElement: HTMLElement | null = target;
         let attempts = 0;
-        const maxAttempts = 10; // Increased depth
+        const maxAttempts = 2; // Only check immediate element + 1 parent for precision
         
         while (searchElement && attempts < maxAttempts) {
           const text = searchElement.textContent || '';
