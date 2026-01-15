@@ -230,10 +230,14 @@ export function NeuralInterface() {
                 exit={{ x: 300, opacity: 0 }}
                 className="fixed w-80 z-[120] font-mono"
                 style={{ 
-                  // Robot uses negative values to stay on screen
-                  // Robot at x:-200 means it moved 200px LEFT, so chat should also move left
+                  // Calculate position based on robot
+                  // Robot.x is negative = moved left, positive = moved right
                   bottom: `calc(5rem + ${-robotPosition.y}px)`,
-                  right: `calc(5rem + ${-robotPosition.x}px)`
+                  // If robot moved far left (x < -150), position from left instead
+                  ...(robotPosition.x < -150 
+                    ? { left: `calc(5rem + ${-robotPosition.x - 350}px)` }
+                    : { right: `calc(5rem + ${-robotPosition.x}px)` }
+                  )
                 }}
             >
                 {/* Chat History Panel */}
@@ -257,7 +261,7 @@ export function NeuralInterface() {
                                     : 'bg-[#222] border border-[#39ff14]/20 text-[#39ff14]/80'
                             }`}
                         >
-                            <div className="whitespace-pre-wrap">{m.content}</div>
+                            <div className="whitespace-pre-wrap break-words overflow-hidden">{m.content}</div>
                             <div className="absolute -bottom-3 right-0 text-[8px] opacity-40 font-bold uppercase tracking-wider">
                                 {m.role === 'user' ? 'USER_CMD' : m.source || 'AI_CORE'}
                             </div>
@@ -283,9 +287,11 @@ export function NeuralInterface() {
                             }`}
                         >
                             {/* Render content - handle both direct content and parts array */}
-                            {(m as any).content || 
-                             (m as any).parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') ||
-                             ''}
+                            <div className="whitespace-pre-wrap break-words overflow-hidden">
+                              {(m as any).content || 
+                               (m as any).parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') ||
+                               ''}
+                            </div>
                             
                             {/* Render Tool Invocations */}
                             {(m as any).toolInvocations?.map((toolInv: any, toolIndex: number) => (
