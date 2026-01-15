@@ -216,101 +216,97 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - DEBUG MODE
+  // Hover detection for wiki links - PROPERLY FIXED
+  const currentLinkRef = useRef<string | null>(null);
+  
   useEffect(() => {
     let lastCallTime = 0;
     const throttleMs = 100;
     
-    console.log('[HOVER INIT] Setting up hover detection...');
-    
     const handleMouseMove = (e: MouseEvent) => {
-      // Throttle check
+      // Throttle
       const now = Date.now();
       if (now - lastCallTime < throttleMs) return;
       lastCallTime = now;
       
-      // REMOVED: if (hoveredLink) return; // This was breaking it!
-      
-      // Clear existing timeout
+      // Clear pending timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
       }
       
       const target = e.target as HTMLElement;
-      console.log('[HOVER] Mouse at:', {
-        x: e.clientX,
-        y: e.clientY,
-        targetTag: target.tagName,
-        targetClass: String(target.className || '').substring(0, 30)
-      });
-      
-      let noteElement: HTMLElement | null = target;
+      let searchElement: HTMLElement | null = target;
       let attempts = 0;
       const maxAttempts = 20;
-      let foundLink = false;
       
-      while (noteElement && attempts < maxAttempts) {
-        const textContent = noteElement.textContent || '';
+      // Search up the DOM tree for elements containing [[links]]
+      while (searchElement && attempts < maxAttempts) {
+        const text = searchElement.textContent || '';
         
-        if (textContent.includes('[[') && textContent.includes(']]')) {
-          console.log(`[HOVER] Level ${attempts}: Found [[ and ]], checking for matches...`);
+        // Look for [[wiki link]] pattern
+        const match = text.match(/\[\[([^\[\]]+)\]\]/);
+        
+        if (match && match[1]) {
+          const linkName = match[1].trim();
           
-          const linkMatches = Array.from(textContent.matchAll(/\[\[([^\]]+)\]\]/g));
-          
-          if (linkMatches.length > 0) {
-            foundLink = true;
-            const firstLink = linkMatches[0][1];
+          // Validate: must be a simple string, not JSON or special characters
+          if (linkName && 
+              !linkName.startsWith('{') && 
+              !linkName.startsWith('[') &&
+              !linkName.includes('"') &&
+              linkName.length < 100) {
             
-            console.log(`[HOVER] FOUND LINK at level ${attempts}:`, firstLink);
-            
-            // IMPORTANT: Only set state if link changed!
-            if (hoveredLink?.text !== firstLink) {
-              console.log('[HOVER] New link detected, setting timeout...');
+            // Only trigger if link changed (prevents duplicate re-renders)
+            if (currentLinkRef.current !== linkName) {
+              currentLinkRef.current = linkName;
+              
+              // Store position at detection time (doesn't follow cursor)
+              const posX = e.clientX + 20;
+              const posY = e.clientY + 20;
+              
               hoverTimeoutRef.current = setTimeout(() => {
-                console.log('[HOVER] TIMEOUT FIRED - Setting preview state for:', firstLink);
                 setHoveredLink({
-                  text: firstLink,
-                  position: { x: e.clientX + 20, y: e.clientY + 20 }
+                  text: linkName,
+                  position: { x: posX, y: posY }
                 });
               }, 300);
-            } else {
-              console.log('[HOVER] Same link, skipping setState');
             }
-            return;
+            return; // Found a link, stop searching
           }
         }
         
-        noteElement = noteElement.parentElement;
+        searchElement = searchElement.parentElement;
         attempts++;
       }
       
-      if (!foundLink) {
-        console.log(`[HOVER] No links found after ${attempts} levels - clearing`);
+      // No valid link found - clear preview
+      if (currentLinkRef.current !== null) {
+        currentLinkRef.current = null;
         setHoveredLink(null);
       }
     };
     
     const handleMouseLeave = () => {
-      console.log('[HOVER] Mouse left window');
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
       }
+      currentLinkRef.current = null;
       setHoveredLink(null);
     };
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseleave', handleMouseLeave);
-    console.log('[HOVER INIT] Listeners attached!');
     
     return () => {
-      console.log('[HOVER CLEANUP] Removing listeners');
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
       }
     };
-  }, []); // NO DEPENDENCIES - was the bug!
+  }, []); // Empty deps is correct now - we use refs!
 
   const debouncedUpdateContent = useDebounce((elementId: string, content: string) => {
     updateElement(elementId, { content });
