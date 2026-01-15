@@ -1063,8 +1063,8 @@ export function CanvasEditor() {
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // 0. Handle Resizing
     if (resizeTarget) {
-        const deltaX = (e.clientX - resizeTarget.startX) / zoom;
-        const deltaY = (e.clientY - resizeTarget.startY) / zoom;
+        const deltaX = (e.clientX - resizeTarget.startX) / zoomRef.current;
+        const deltaY = (e.clientY - resizeTarget.startY) / zoomRef.current;
         
         updateElement(resizeTarget.id, {
             width: Math.max(200, resizeTarget.startWidth + deltaX),
@@ -1088,9 +1088,9 @@ export function CanvasEditor() {
     const dxScreen = e.clientX - dragStartMouseRef.current.x;
     const dyScreen = e.clientY - dragStartMouseRef.current.y;
     
-    // Delta World = Delta Screen / Zoom
-    const dxWorld = dxScreen / zoom;
-    const dyWorld = dyScreen / zoom;
+    // Delta World = Delta Screen / Zoom (use ref for current value)
+    const dxWorld = dxScreen / zoomRef.current;
+    const dyWorld = dyScreen / zoomRef.current;
 
     const newX = dragStartPosRef.current.x + dxWorld;
     const newY = dragStartPosRef.current.y + dyWorld;
@@ -1100,6 +1100,7 @@ export function CanvasEditor() {
       [dragElementRef.current!]: { x: newX, y: newY },
     }));
 
+    // Drag target detection (use cached activeCanvas from context if available)
     if (activeCanvas) {
         const draggedEl = activeCanvas.elements.find(el => el.id === dragElementRef.current);
         if (draggedEl) {
@@ -1112,7 +1113,7 @@ export function CanvasEditor() {
             setDragTargetId(target ? target.id : null);
         }
     }
-  }, [isDragging, activeTool, activeCanvas, viewOffset, zoom, resizeTarget]);
+  }, [isDragging, activeTool, resizeTarget, activeCanvas, updateElement, setViewOffset]);
 
   const handleMouseUp = useCallback(async () => {
     if (resizeTarget) {

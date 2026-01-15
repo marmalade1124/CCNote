@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useCanvas } from "@/context/CanvasContext";
 
 interface LocalAnswer {
@@ -12,7 +12,17 @@ interface LocalAnswer {
 export function useCanvasKnowledge() {
   const { activeCanvas, canvases } = useCanvas();
 
-  // Get all text content from canvas elements
+  // Memoize element count and IDs to prevent re-computation on position changes
+  const elementSignature = useMemo(() => {
+    if (!activeCanvas) return null;
+    return {
+      count: activeCanvas.elements.length,
+      ids: activeCanvas.elements.map(el => el.id).join(','),
+      canvasId: activeCanvas.id
+    };
+  }, [activeCanvas?.id, activeCanvas?.elements.length, activeCanvas?.elements.map(el => el.id).join(',')]);
+
+  // Get all text content from canvas elements (memoized)
   const getAllContent = useCallback(() => {
     if (!activeCanvas) return [];
     return activeCanvas.elements.map(el => ({
@@ -20,7 +30,7 @@ export function useCanvasKnowledge() {
       type: el.type,
       content: el.content || "",
     }));
-  }, [activeCanvas]);
+  }, [elementSignature]); // Only re-run when elements added/removed
 
   // Search for keyword in all content
   const searchContent = useCallback((keyword: string): string[] => {
@@ -38,7 +48,7 @@ export function useCanvasKnowledge() {
         const snippet = (start > 0 ? "..." : "") + content.slice(start, end) + (end < content.length ? "..." : "");
         return `[${el.type}] ${snippet}`;
       });
-  }, [activeCanvas]);
+  }, [elementSignature, activeCanvas]); // Memoized based on element structure
 
   // Get node titles (first line of content or type)
   const getNodeTitles = useCallback(() => {
@@ -47,7 +57,7 @@ export function useCanvasKnowledge() {
       const firstLine = el.content?.split("\n")[0]?.trim() || "";
       return firstLine.slice(0, 50) || `Untitled ${el.type}`;
     });
-  }, [activeCanvas]);
+  }, [elementSignature]);
 
   // Get connections for a node
   const getConnectionsFor = useCallback((searchTerm: string) => {
