@@ -481,6 +481,26 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
               : c
           )
         );
+
+        // Dispatch event for connection FX animation
+        // Find element centers for animation endpoints
+        const fromElement = activeCanvas?.elements.find(el => el.id === fromId);
+        const toElement = activeCanvas?.elements.find(el => el.id === toId);
+        
+        if (fromElement && toElement) {
+          window.dispatchEvent(new CustomEvent('connection:created', {
+            detail: {
+              from: {
+                x: fromElement.x + fromElement.width / 2,
+                y: fromElement.y + fromElement.height / 2,
+              },
+              to: {
+                x: toElement.x + toElement.width / 2,
+                y: toElement.y + toElement.height / 2,
+              },
+            },
+          }));
+        }
       } catch (error) {
         console.error("Error adding connection:", error);
       }

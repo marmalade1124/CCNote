@@ -6,11 +6,21 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'Space Mono', monospace;
   
-  /* Retro Theme Colors */
+  /* Retro Theme Colors (legacy, keeping for compatibility) */
   --retro-primary: #eca013;
   --retro-bg-dark: #0a0b10;
   --retro-accent: #1a160f;
   --retro-neon-green: #39ff14;
+  
+  /* Dynamic Theme Colors (set by ThemeContext) */
+  --theme-primary: #eca013;
+  --theme-secondary: #39ff14;
+  --theme-bg: #0a0b10;
+  --theme-card-bg: rgba(10, 11, 16, 0.9);
+  --theme-card-border: rgba(236, 160, 19, 0.3);
+  --theme-text-primary: #eca013;
+  --theme-text-secondary: rgba(236, 160, 19, 0.6);
+  --theme-accent: #39ff14;
 }
 
 @theme {
@@ -329,4 +339,135 @@ input:not([type="file"]):focus, textarea:focus {
 .connection-delete-text {
     opacity: 0;
     transition: opacity 0.2s;
+}
+
+/* === THEME-SPECIFIC GRID BACKGROUNDS === */
+.retro-grid-amber {
+  background-image: 
+    linear-gradient(rgba(236, 160, 19, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 160, 19, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.retro-grid-green {
+  background-image: 
+    linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.retro-grid-pink {
+  background-image: 
+    linear-gradient(rgba(255, 42, 109, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 42, 109, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.retro-grid-teal {
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* === BOOT ANIMATION === */
+@keyframes crt-boot-scan {
+  0% { top: -20%; opacity: 1; }
+  100% { top: 100%; opacity: 0.5; }
+}
+
+@keyframes text-boot-reveal {
+  0% { 
+    opacity: 0; 
+    filter: blur(4px); 
+    transform: translateY(5px);
+  }
+  50% {
+    opacity: 0.5;
+    filter: blur(2px);
+  }
+  100% { 
+    opacity: 1; 
+    filter: blur(0); 
+    transform: translateY(0);
+  }
+}
+
+@keyframes boot-flicker {
+  0%, 100% { opacity: 1; }
+  10% { opacity: 0.8; }
+  20% { opacity: 1; }
+  30% { opacity: 0.9; }
+  40% { opacity: 1; }
+  50% { opacity: 0.7; }
+  60% { opacity: 1; }
+}
+
+.boot-scan-line {
+  animation: crt-boot-scan 0.4s ease-out forwards;
+}
+
+.boot-content-reveal {
+  animation: text-boot-reveal 0.3s ease-out 0.15s forwards;
+  opacity: 0;
+}
+
+.boot-flicker {
+  animation: boot-flicker 0.3s ease-in-out;
+}
+
+/* === CONNECTION CREATION FX === */
+@keyframes connection-draw {
+  0% { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes connection-glow-pulse {
+  0% { filter: drop-shadow(0 0 2px var(--theme-primary)); }
+  50% { filter: drop-shadow(0 0 15px var(--theme-primary)) drop-shadow(0 0 30px var(--theme-primary)); }
+  100% { filter: drop-shadow(0 0 5px var(--theme-primary)); }
+}
+
+@keyframes endpoint-burst {
+  0% { 
+    transform: scale(0); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: scale(2); 
+    opacity: 0.8; 
+  }
+  100% { 
+    transform: scale(3); 
+    opacity: 0; 
+  }
+}
+
+.connection-fx-line {
+  stroke-dasharray: 1000;
+  animation: connection-draw 0.5s ease-out forwards, connection-glow-pulse 0.6s ease-in-out;
+}
+
+.connection-fx-endpoint {
+  animation: endpoint-burst 0.4s ease-out forwards;
+}
+
+/* === OUTRUN GRADIENT BACKGROUND === */
+.outrun-gradient-bg {
+  background: linear-gradient(
+    180deg,
+    #1a0a2e 0%,
+    #2d1b4e 30%,
+    #4a1942 50%,
+    #6b2d5b 70%,
+    #1a0a2e 100%
+  );
+}
+
+/* === GHOST SHELL NEURAL OVERLAY === */
+.ghost-neural-bg {
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(255, 0, 255, 0.05) 0%, transparent 50%),
+    #0a1628;
 }

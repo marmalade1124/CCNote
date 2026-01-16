@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCanvas } from "@/context/CanvasContext";
+import { useTheme } from "@/context/ThemeContext";
 import { ProfileModal } from "./ProfileModal";
 import { PomodoroTimer } from "./PomodoroTimer";
 import { TypingDefenseGame } from "./TypingDefenseGame";
 import { GraphView } from "./GraphView";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSfx } from "@/hooks/useSfx";
 
@@ -17,6 +19,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
   const [isGraphOpen, setIsGraphOpen] = useState(false);
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -111,6 +114,16 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                 title="Microphone Settings"
              >
                 <span className="material-symbols-outlined text-[18px]">settings_voice</span>
+             </button>
+
+             {/* Theme Switcher Toggle */}
+             <button
+                onClick={() => { playClick(); setIsThemeOpen(true); }}
+                onMouseEnter={playHover}
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                title="Canvas Themes"
+             >
+                <span className="material-symbols-outlined text-[18px]">palette</span>
              </button>
 
              {/* Game Toggle */}
@@ -300,6 +313,7 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
       )}
       {isGameOpen && <TypingDefenseGame onClose={() => setIsGameOpen(false)} />}
       {isGraphOpen && <GraphView onClose={() => setIsGraphOpen(false)} />}
+      {isThemeOpen && <ThemeSwitcher onClose={() => setIsThemeOpen(false)} />}
     </>
   );
 }

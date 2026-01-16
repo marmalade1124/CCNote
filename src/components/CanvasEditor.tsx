@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useCanvas } from "@/context/CanvasContext";
+import { useTheme } from "@/context/ThemeContext";
 import { CanvasElement } from "@/types/canvas";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSfx } from "@/hooks/useSfx";
@@ -9,6 +10,7 @@ import { Radar } from "./Radar";
 import { ConfirmModal } from "./ConfirmModal";
 import { SmartLinkPanel } from "./SmartLinkPanel";
 import { HologramPreview } from "./HologramPreview";
+import { ConnectionFX } from "./ConnectionFX";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -189,6 +191,16 @@ export function CanvasEditor() {
   const [hoveredLink, setHoveredLink] = useState<{text: string, position: {x: number, y: number}} | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Connection FX state
+  const [connectionFXList, setConnectionFXList] = useState<{id: string, from: {x: number, y: number}, to: {x: number, y: number}}[]>([]);
+  
+  // Boot animation state - track which elements have been "booted"
+  const bootedElementsRef = useRef<Set<string>>(new Set());
+  const [bootingElementId, setBootingElementId] = useState<string | null>(null);
+  
+  // Get theme for styled elements
+  const { colors } = useTheme();
+  
   const [localContent, setLocalContent] = useState<Record<string, string>>({});
 
   // Focus Mode Hotkeys (after state declarations)
@@ -215,6 +227,33 @@ export function CanvasEditor() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
+  
+  // Connection FX listener
+  useEffect(() => {
+    const handleConnectionCreated = (e: CustomEvent<{from: {x: number, y: number}, to: {x: number, y: number}}>) => {
+      const id = `fx-${Date.now()}`;
+      setConnectionFXList(prev => [...prev, { id, ...e.detail }]);
+    };
+
+    window.addEventListener('connection:created', handleConnectionCreated as EventListener);
+    return () => window.removeEventListener('connection:created', handleConnectionCreated as EventListener);
+  }, []);
+
+  // Boot animation trigger on element selection
+  useEffect(() => {
+    if (selectedElement && !bootedElementsRef.current.has(selectedElement)) {
+      // First time selecting this element - trigger boot animation
+      setBootingElementId(selectedElement);
+      bootedElementsRef.current.add(selectedElement);
+      
+      // End boot animation after delay
+      const timer = setTimeout(() => {
+        setBootingElementId(null);
+      }, 700);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedElement]);
   
   // Hover detection for wiki links - RACE CONDITION FIX
   const currentLinkRef = useRef<string | null>(null);
@@ -2201,6 +2240,16 @@ export function CanvasEditor() {
           }}
         />
       )}
+      
+      {/* Connection Creation FX */}
+      {connectionFXList.map(fx => (
+        <ConnectionFX
+          key={fx.id}
+          from={fx.from}
+          to={fx.to}
+          onComplete={() => setConnectionFXList(prev => prev.filter(f => f.id !== fx.id))}
+        />
+      ))}
     </div>
   );
 }
