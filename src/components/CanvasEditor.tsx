@@ -1587,13 +1587,25 @@ export function CanvasEditor() {
   });
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden bg-[#0a0b10] select-none" onKeyDown={handleKeyDown} tabIndex={0} 
-         onMouseDown={handleMouseDownRaw} /* Capture Pan Start anywhere */
+    <div 
+      className="flex-1 flex flex-col relative overflow-hidden select-none" 
+      style={{ backgroundColor: colors.background }}
+      onKeyDown={handleKeyDown} 
+      tabIndex={0} 
+      onMouseDown={handleMouseDownRaw} /* Capture Pan Start anywhere */
     >
-      <div className="absolute inset-0 pointer-events-none retro-grid opacity-100 mix-blend-screen"
-         style={{ backgroundPosition: `${viewOffset.x}px ${viewOffset.y}px`, backgroundSize: `${50 * zoom}px ${50 * zoom}px` }} /* Grid scales with zoom */
+      <div 
+        className="absolute inset-0 pointer-events-none retro-grid opacity-100 mix-blend-screen"
+        style={{ 
+          backgroundPosition: `${viewOffset.x}px ${viewOffset.y}px`, 
+          backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
+          backgroundImage: `linear-gradient(${colors.primary}08 1px, transparent 1px), linear-gradient(90deg, ${colors.primary}08 1px, transparent 1px)`,
+        }}
       ></div>
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-80"
+        style={{ background: `radial-gradient(circle at center, transparent 0%, ${colors.background} 120%)` }}
+      ></div>
       
        {/* Toolbar */}
        <div 
