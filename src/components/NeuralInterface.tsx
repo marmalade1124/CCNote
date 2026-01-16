@@ -438,6 +438,16 @@ export function NeuralInterface() {
                     ))}
                     <div ref={messagesEndRef} />
                 </div>
+                
+                {/* Subtle Scanline Overlay */}
+                <div 
+                    className="absolute inset-0 pointer-events-none z-0 opacity-10 rounded-lg overflow-hidden"
+                    style={{
+                        background: `linear-gradient(180deg, transparent 0%, ${activeCanvas?.elements[0]?.color || '#eca013'}10 50%, transparent 100%)`,
+                        backgroundSize: '100% 4px',
+                        animation: 'scanline 10s linear infinite'
+                    }}
+                ></div>
 
                 {/* Input Panel */}
                 <div className="bg-[#0a0b10]/90 backdrop-blur-md border border-[#39ff14]/50 rounded-lg p-3 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
@@ -482,33 +492,41 @@ export function NeuralInterface() {
                                 return;
                             }
 
-                            // Add user message to local display
-                            setLocalMessages(prev => [...prev, { role: 'user', content: query, createdAt: Date.now() }]);
-                            
                             // 2. Try Local Knowledge (Q&A) -> No AI
                             const localAnswer = askQuestion(query);
+                            
                             if (localAnswer) {
+                              // Found local answer: Add BOTH user message and answer to local state
+                              setLocalMessages(prev => [
+                                ...prev, 
+                                { role: 'user', content: query, createdAt: Date.now() },
+                                { 
+                                  role: 'assistant', 
+                                  content: localAnswer.text, 
+                                  source: '⚡ LOCAL',
+                                  createdAt: Date.now() + 10 // Slight offset to ensure order
+                                }
+                              ]);
                               playHappyBeep?.();
-                              setLocalMessages(prev => [...prev, { 
-                                role: 'assistant', 
-                                content: localAnswer.text, 
-                                source: '⚡ LOCAL',
-                                createdAt: Date.now()
-                              }]);
                               speak(localAnswer.text);
                             } else {
-                              // 3. Fallback to Cloud AI (Only if enabled)
+                              // 3. Fallback to Cloud AI or Offline Message
                               if (useCloudAI) {
+                                  // Cloud AI handles the user message state automatically
                                   sendMessage({ role: 'user', content: query });
                               } else {
-                                  // AI Disabled fallback
+                                  // AI Disabled: Add user message AND error to local state
                                   const msg = "Cloud AI is disabled.";
-                                  setLocalMessages(prev => [...prev, { 
-                                      role: 'assistant', 
-                                      content: msg, 
-                                      source: '🚫 OFFLINE',
-                                      createdAt: Date.now()
-                                  }]);
+                                  setLocalMessages(prev => [
+                                      ...prev, 
+                                      { role: 'user', content: query, createdAt: Date.now() },
+                                      { 
+                                          role: 'assistant', 
+                                          content: msg, 
+                                          source: '🚫 OFFLINE',
+                                          createdAt: Date.now() + 10 
+                                      }
+                                  ]);
                                   speak("Cloud AI is disabled.");
                               }
                             }

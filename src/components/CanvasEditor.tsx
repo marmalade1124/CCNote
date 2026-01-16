@@ -11,6 +11,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { SmartLinkPanel } from "./SmartLinkPanel";
 import { HologramPreview } from "./HologramPreview";
 import { ConnectionFX } from "./ConnectionFX";
+import { ParticleBackground } from "./ParticleBackground";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -1602,10 +1603,15 @@ export function CanvasEditor() {
           backgroundImage: `linear-gradient(${colors.primary}08 1px, transparent 1px), linear-gradient(90deg, ${colors.primary}08 1px, transparent 1px)`,
         }}
       ></div>
+      
+      {/* Dynamic Background Effects */}
+      <ParticleBackground />
+
       <div 
         className="absolute inset-0 pointer-events-none opacity-80"
         style={{ background: `radial-gradient(circle at center, transparent 0%, ${colors.background} 120%)` }}
       ></div>
+
       
        {/* Toolbar */}
        <div 
