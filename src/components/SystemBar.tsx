@@ -14,6 +14,7 @@ import { useSfx } from "@/hooks/useSfx";
 
 export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
   const { canvases, activeCanvasId, setActiveCanvas, createCanvas, deleteCanvas, renameCanvas, isLoading, user } = useCanvas();
+  const { colors } = useTheme();
   const { playClick, playHover, playPowerDown, speak } = useSfx();
   const [isArchivesOpen, setIsArchivesOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
@@ -63,31 +64,44 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full h-14 bg-[#0a0b10]/80 backdrop-blur-md border-b border-[#eca013]/20 z-40 flex items-center justify-between px-6 select-none">
+      <header 
+        className="fixed top-0 left-0 w-full h-14 backdrop-blur-md z-40 flex items-center justify-between px-6 select-none"
+        style={{ 
+          backgroundColor: `${colors.background}cc`,
+          borderBottom: `1px solid ${colors.primary}30`,
+        }}
+      >
         
         {/* Left: System Status */}
         <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 text-[#eca013]">
+            <div className="flex items-center gap-3" style={{ color: colors.primary }}>
                 <span className="material-symbols-outlined text-2xl phosphor-glow animate-pulse">terminal</span>
                 <span className="font-bold tracking-[0.15em] uppercase text-sm phosphor-glow">CC_NOTE // V.1.0.4</span>
             </div>
             
             {/* Divider */}
-            <div className="h-6 w-[1px] bg-[#eca013]/20"></div>
+            <div className="h-6 w-[1px]" style={{ backgroundColor: `${colors.primary}30` }}></div>
 
             {/* Archives Toggle */}
             <button 
                 onClick={() => { playClick(); setIsArchivesOpen(!isArchivesOpen); }}
                 onMouseEnter={playHover}
-                className={`archives-trigger flex items-center gap-2 px-3 py-1.5 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
-                    isArchivesOpen 
-                    ? "bg-[#eca013]/10 border-[#eca013] text-[#eca013] shadow-[0_0_15px_rgba(236,160,19,0.1)]" 
-                    : "border-transparent text-[#eca013]/60 hover:text-[#eca013] hover:bg-[#eca013]/5"
-                }`}
+                className="archives-trigger flex items-center gap-2 px-3 py-1.5 rounded border transition-all uppercase text-xs font-bold tracking-widest"
+                style={{
+                    color: isArchivesOpen ? colors.primary : colors.textSecondary,
+                    backgroundColor: isArchivesOpen ? `${colors.primary}15` : 'transparent',
+                    borderColor: isArchivesOpen ? colors.primary : 'transparent',
+                    boxShadow: isArchivesOpen ? `0 0 15px ${colors.primary}20` : 'none',
+                }}
             >
                 <span className="material-symbols-outlined text-sm">folder_open</span>
                 Archives
-                <span className="bg-[#eca013]/20 text-[#eca013] px-1.5 py-0.5 rounded text-[9px] font-mono ml-1">{canvases.length}</span>
+                <span 
+                    className="px-1.5 py-0.5 rounded text-[9px] font-mono ml-1"
+                    style={{ backgroundColor: `${colors.primary}30`, color: colors.primary }}
+                >
+                    {canvases.length}
+                </span>
             </button>
         </div>
 
@@ -97,7 +111,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
              <button
                 onClick={() => { playClick(); setIsGraphOpen(true); }}
                 onMouseEnter={playHover}
-                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent transition-all uppercase text-xs font-bold tracking-widest"
+                style={{ color: colors.textSecondary }}
                 title="View Data Constellation"
              >
                 <span className="material-symbols-outlined text-[18px]">hub</span>
@@ -110,7 +125,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                   window.dispatchEvent(new CustomEvent('toggle-mic-settings'));
                 }}
                 onMouseEnter={playHover}
-                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent transition-all uppercase text-xs font-bold tracking-widest"
+                style={{ color: colors.textSecondary }}
                 title="Microphone Settings"
              >
                 <span className="material-symbols-outlined text-[18px]">settings_voice</span>
@@ -120,7 +136,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
              <button
                 onClick={() => { playClick(); setIsThemeOpen(true); }}
                 onMouseEnter={playHover}
-                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent transition-all uppercase text-xs font-bold tracking-widest"
+                style={{ color: colors.textSecondary }}
                 title="Canvas Themes"
              >
                 <span className="material-symbols-outlined text-[18px]">palette</span>
@@ -130,7 +147,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
              <button
                 onClick={() => { playClick(); setIsGameOpen(true); }}
                 onMouseEnter={playHover}
-                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent text-[#eca013]/40 hover:text-[#eca013] hover:bg-[#eca013]/5 transition-all uppercase text-xs font-bold tracking-widest"
+                className="flex items-center gap-2 px-2 py-1 rounded border border-transparent transition-all uppercase text-xs font-bold tracking-widest"
+                style={{ color: colors.textSecondary }}
                 title="Launch Simulations"
              >
                 <span className="material-symbols-outlined text-[18px]">sports_esports</span>
@@ -140,36 +158,43 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
              <button
                 onClick={() => { playClick(); setIsTimerOpen(!isTimerOpen); }}
                 onMouseEnter={playHover}
-                className={`flex items-center gap-2 px-2 py-1 rounded border transition-all uppercase text-xs font-bold tracking-widest ${
-                    isTimerOpen
-                    ? "text-[#eca013] border-[#eca013] bg-[#eca013]/10"
-                    : "text-[#eca013]/40 border-transparent hover:text-[#eca013] hover:bg-[#eca013]/5"
-                }`}
+                className="flex items-center gap-2 px-2 py-1 rounded border transition-all uppercase text-xs font-bold tracking-widest"
+                style={{
+                    color: isTimerOpen ? colors.primary : colors.textSecondary,
+                    borderColor: isTimerOpen ? colors.primary : 'transparent',
+                    backgroundColor: isTimerOpen ? `${colors.primary}15` : 'transparent',
+                }}
                 title="Toggle Chrono Sync"
              >
                 <span className="material-symbols-outlined text-[18px]">timer</span>
              </button>
 
-             <div className="text-[#eca013]/40 font-mono text-xs tracking-widest">
-                {currentTime} <span className="text-[#39ff14]">●</span>
+             <div className="font-mono text-xs tracking-widest" style={{ color: colors.textSecondary }}>
+                {currentTime} <span style={{ color: colors.accent }}>●</span>
              </div>
 
-             <div className="h-6 w-[1px] bg-[#eca013]/20"></div>
+             <div className="h-6 w-[1px]" style={{ backgroundColor: `${colors.primary}30` }}></div>
 
              <button 
                 onClick={() => setIsProfileOpen(true)}
-                className="flex items-center gap-3 pl-2 pr-1 py-1 rounded hover:bg-[#eca013]/5 transition-colors group"
+                className="flex items-center gap-3 pl-2 pr-1 py-1 rounded transition-colors group"
              >
                  <div className="text-right hidden sm:block">
-                     <div className="text-[#eca013] text-[10px] font-bold tracking-wider uppercase">{displayName}</div>
-                     <div className="text-[#eca013]/40 text-[9px]">ID: {user?.id?.slice(0,4) || "GUEST"}</div>
+                     <div className="text-[10px] font-bold tracking-wider uppercase" style={{ color: colors.primary }}>{displayName}</div>
+                     <div className="text-[9px]" style={{ color: colors.textSecondary }}>ID: {user?.id?.slice(0,4) || "GUEST"}</div>
                  </div>
-                 <div className="size-8 rounded-full bg-[#eca013]/10 border border-[#eca013]/30 overflow-hidden flex items-center justify-center shrink-0 group-hover:border-[#eca013] transition-colors">
+                 <div 
+                    className="size-8 rounded-full overflow-hidden flex items-center justify-center shrink-0 transition-colors"
+                    style={{ 
+                        backgroundColor: `${colors.primary}15`,
+                        border: `1px solid ${colors.primary}50`,
+                    }}
+                 >
                      {avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                      ) : (
-                        <span className="material-symbols-outlined text-[#eca013] text-sm">person</span>
+                        <span className="material-symbols-outlined text-sm" style={{ color: colors.primary }}>person</span>
                      )}
                  </div>
              </button>
@@ -177,15 +202,27 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
       </header>
 
 
+
       {/* Archives Overlay Panel */}
       {isArchivesOpen && (
-          <div className="fixed top-16 left-6 w-80 bg-[#0a0b10]/95 border border-[#eca013]/40 rounded-lg shadow-[0_4px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(236,160,19,0.1)] z-40 backdrop-blur-xl flex flex-col max-h-[calc(100vh-100px)] animate-in slide-in-from-top-2 duration-200">
-              <div className="p-4 border-b border-[#eca013]/20 flex items-center justify-between">
-                  <h2 className="text-[#eca013] font-bold tracking-widest text-xs uppercase">Data_Archives</h2>
+          <div 
+            className="fixed top-16 left-6 w-80 rounded-lg z-40 backdrop-blur-xl flex flex-col max-h-[calc(100vh-100px)] animate-in slide-in-from-top-2 duration-200"
+            style={{
+                backgroundColor: `${colors.background}f5`,
+                border: `1px solid ${colors.primary}60`,
+                boxShadow: `0 4px 30px rgba(0,0,0,0.5), 0 0 15px ${colors.primary}20`,
+            }}
+          >
+              <div 
+                className="p-4 flex items-center justify-between"
+                style={{ borderBottom: `1px solid ${colors.primary}30` }}
+              >
+                  <h2 className="font-bold tracking-widest text-xs uppercase" style={{ color: colors.primary }}>Data_Archives</h2>
                   <div className="flex gap-2">
                        <button 
                           onClick={() => { playClick(); setIsCreating(true); }}
-                          className="text-[#eca013] hover:text-[#39ff14] transition-colors"
+                          style={{ color: colors.primary }}
+                          className="transition-colors"
                           title="New Databank"
                        >
                            <span className="material-symbols-outlined text-lg">add_circle</span>
@@ -200,7 +237,12 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                               autoFocus
                               type="text"
                               placeholder="ARCHIVE_NAME..."
-                              className="w-full bg-[#eca013]/5 border border-[#eca013]/50 rounded px-2 py-1 text-xs text-[#eca013] placeholder-[#eca013]/30 outline-none"
+                              className="w-full rounded px-2 py-1 text-xs outline-none"
+                              style={{
+                                  backgroundColor: `${colors.primary}10`,
+                                  border: `1px solid ${colors.primary}80`,
+                                  color: colors.primary,
+                              }}
                               value={newCanvasName}
                               onChange={(e) => setNewCanvasName(e.target.value)}
                               onKeyDown={(e) => {
@@ -215,23 +257,23 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                   {sortedCanvases.map(canvas => (
                       <div 
                           key={canvas.id}
-                          className={`group flex items-center justify-between p-2 rounded cursor-pointer border transition-all ${
-                              activeCanvasId === canvas.id 
-                              ? "bg-[#eca013]/10 border-[#eca013]/40 shadow-[0_0_10px_rgba(236,160,19,0.1)]" 
-                              : "border-transparent hover:bg-[#eca013]/5 hover:border-[#eca013]/20"
-                          }`}
+                          className="group flex items-center justify-between p-2 rounded cursor-pointer border transition-all"
+                          style={{
+                              backgroundColor: activeCanvasId === canvas.id ? `${colors.primary}15` : 'transparent',
+                              borderColor: activeCanvasId === canvas.id ? `${colors.primary}60` : 'transparent',
+                              boxShadow: activeCanvasId === canvas.id ? `0 0 10px ${colors.primary}20` : 'none',
+                          }}
                           onClick={() => {
                               playClick();
                               setActiveCanvas(canvas.id);
-                              // Optional: close archives on selection?
-                              // setIsArchivesOpen(false); 
                           }}
                       >
                           {editingId === canvas.id ? (
                               <input
                                   autoFocus
                                   type="text"
-                                  className="w-full bg-transparent border-b border-[#eca013] text-xs text-[#eca013] outline-none"
+                                  className="w-full bg-transparent text-xs outline-none"
+                                  style={{ borderBottom: `1px solid ${colors.primary}`, color: colors.primary }}
                                   value={editName}
                                   onChange={(e) => setEditName(e.target.value)}
                                   onKeyDown={(e) => {
@@ -243,10 +285,13 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                               />
                           ) : (
                               <div className="flex flex-col">
-                                  <span className={`text-xs font-bold tracking-wider ${activeCanvasId === canvas.id ? "text-[#eca013]" : "text-[#eca013]/70"}`}>
+                                  <span 
+                                    className="text-xs font-bold tracking-wider"
+                                    style={{ color: activeCanvasId === canvas.id ? colors.primary : colors.textSecondary }}
+                                  >
                                       {canvas.name}
                                   </span>
-                                  <span className="text-[9px] text-[#eca013]/40 font-mono">
+                                  <span className="text-[9px] font-mono" style={{ color: colors.textSecondary }}>
                                       {new Date(canvas.updatedAt).toLocaleDateString()}
                                   </span>
                               </div>
@@ -259,7 +304,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                                       playClick();
                                       startEditing(canvas.id, canvas.name);
                                   }}
-                                  className="p-1 hover:text-[#39ff14] text-[#eca013]/50 transition-colors"
+                                  className="p-1 transition-colors"
+                                  style={{ color: colors.textSecondary }}
                               >
                                   <span className="material-symbols-outlined text-[14px]">edit</span>
                               </button>
@@ -269,7 +315,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                                       playClick();
                                       if(confirm("Confirm deletion of this archive?")) deleteCanvas(canvas.id);
                                   }}
-                                  className="p-1 hover:text-red-500 text-[#eca013]/50 transition-colors"
+                                  className="p-1 hover:text-red-500 transition-colors"
+                                  style={{ color: colors.textSecondary }}
                               >
                                   <span className="material-symbols-outlined text-[14px]">delete</span>
                               </button>
@@ -278,7 +325,13 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                   ))}
               </div>
 
-              <div className="p-3 border-t border-[#eca013]/20 bg-[#0a0b10]/50 backdrop-blur-sm">
+              <div 
+                className="p-3 backdrop-blur-sm"
+                style={{ 
+                    borderTop: `1px solid ${colors.primary}30`,
+                    backgroundColor: `${colors.background}80`,
+                }}
+              >
                  <button 
                     onClick={() => {
                         playClick();
@@ -286,7 +339,8 @@ export function SystemBar({ onShutdown }: { onShutdown: () => void }) {
                         speak("Terminating Uplink");
                         onShutdown();
                     }}
-                    className="w-full mt-3 flex items-center justify-center gap-2 text-[#eca013]/50 hover:text-red-500 hover:bg-red-500/10 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-wider"
+                    className="w-full mt-3 flex items-center justify-center gap-2 hover:text-red-500 hover:bg-red-500/10 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: colors.textSecondary }}
                  >
                         <span className="material-symbols-outlined text-[14px]">power_settings_new</span>
                         Terminate_Uplink

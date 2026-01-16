@@ -1595,11 +1595,22 @@ export function CanvasEditor() {
       ></div>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,#0a0b10_120%)] opacity-80"></div>
       
-      {/* Toolbar */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 bg-[#0a0b10]/95 shadow-[0_0_20px_rgba(236,160,19,0.3)] border-y-2 border-[#eca013] backdrop-blur-md clip-tech">
+       {/* Toolbar */}
+       <div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 p-2 backdrop-blur-md clip-tech"
+          style={{
+            backgroundColor: `${colors.background}f0`,
+            boxShadow: `0 0 20px ${colors.primary}50`,
+            borderTop: `2px solid ${colors.primary}`,
+            borderBottom: `2px solid ${colors.primary}`,
+          }}
+       >
          
          {/* Canvas Name Badge */}
-         <div className="pl-3 pr-2 border-r border-[#eca013]/30 flex items-center gap-2 opacity-80 cursor-default">
+         <div 
+            className="pl-3 pr-2 flex items-center gap-2 opacity-80 cursor-default"
+            style={{ borderRight: `1px solid ${colors.primary}30`, color: colors.primary }}
+         >
             <span className="material-symbols-outlined text-sm">folder_open</span>
             <span className="text-xs font-bold uppercase tracking-wider max-w-[100px] truncate">{activeCanvas.name}</span>
             <span className="text-[9px] font-mono opacity-50 ml-1">{Math.round(zoom * 100)}%</span>
@@ -1611,7 +1622,13 @@ export function CanvasEditor() {
                 <button 
                     key={tool}
                     title={tool.toUpperCase()}
-                    className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${activeTool === tool ? "bg-[#eca013] text-[#0a0b10] border-[#eca013] shadow-[0_0_10px_#eca013]" : "text-[#eca013] hover:bg-[#eca013]/10 hover:border-[#eca013]/50"}`}
+                    className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border"
+                    style={{
+                        backgroundColor: activeTool === tool ? colors.primary : 'transparent',
+                        color: activeTool === tool ? colors.background : colors.primary,
+                        borderColor: activeTool === tool ? colors.primary : 'transparent',
+                        boxShadow: activeTool === tool ? `0 0 10px ${colors.primary}` : 'none',
+                    }}
                     onMouseEnter={playHover}
                     onClick={(e) => { 
                         e.stopPropagation(); 
@@ -1634,18 +1651,22 @@ export function CanvasEditor() {
                     }[tool as string]}</span>
                     
                     {/* Tooltip */}
-                    <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
+                    <span 
+                        className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap"
+                        style={{ backgroundColor: colors.primary, color: colors.background }}
+                    >
                         {tool.toUpperCase()}
                     </span>
                 </button>
             ))}
 
-            <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
+            <div className="w-px h-6 mx-1" style={{ backgroundColor: `${colors.primary}50` }}></div>
             
             {/* Quick Capture Button */}
             <button 
                 title="QUICK CAPTURE (ALT+N)"
-                className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent text-[#eca013] hover:bg-[#eca013]/10 hover:border-[#eca013]/50"
+                className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent"
+                style={{ color: colors.primary }}
                 onMouseEnter={playHover}
                 onClick={(e) => { 
                     e.stopPropagation(); 
@@ -1655,16 +1676,25 @@ export function CanvasEditor() {
                 }}
             >
                 <span className="material-symbols-outlined text-[20px]">add_circle</span>
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#eca013] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10">
+                <span 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10"
+                    style={{ backgroundColor: colors.primary, color: colors.background }}
+                >
                     QUICK NOTE
                 </span>
             </button>
 
-            <div className="w-px h-6 bg-[#eca013]/30 mx-1"></div>
+            <div className="w-px h-6 mx-1" style={{ backgroundColor: `${colors.primary}50` }}></div>
 
             <button 
                 title={viewMode === 'editor' ? "SWITCH TO GRAPH" : "SWITCH TO EDITOR"}
-                className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${viewMode === 'graph' ? "bg-[#39ff14] text-[#0a0b10] border-[#39ff14] shadow-[0_0_10px_#39ff14]" : "text-[#39ff14] hover:bg-[#39ff14]/10 hover:border-[#39ff14]/50"}`}
+                className="p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border"
+                style={{
+                    backgroundColor: viewMode === 'graph' ? colors.accent : 'transparent',
+                    color: viewMode === 'graph' ? colors.background : colors.accent,
+                    borderColor: viewMode === 'graph' ? colors.accent : 'transparent',
+                    boxShadow: viewMode === 'graph' ? `0 0 10px ${colors.accent}` : 'none',
+                }}
                 onMouseEnter={playHover}
                 onClick={(e) => { 
                     e.stopPropagation(); 
@@ -1673,7 +1703,10 @@ export function CanvasEditor() {
                 }}
             >
                 <span className="material-symbols-outlined text-[20px]">{viewMode === 'editor' ? 'grain' : 'grid_view'}</span>
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#39ff14] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap">
+                <span 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap"
+                    style={{ backgroundColor: colors.accent, color: colors.background }}
+                >
                         {viewMode === 'editor' ? 'LOGIC_GRAPH' : 'VISUAL_EDITOR'}
                 </span>
             </button>
@@ -1681,7 +1714,13 @@ export function CanvasEditor() {
             {/* Focus Mode Toggle */}
             <button 
                 title="FOCUS MODE (F11)"
-                className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border border-transparent ${focusMode ? "bg-[#39ff14] text-[#0a0b10] border-[#39ff14] shadow-[0_0_10px_#39ff14] animate-pulse" : "text-[#39ff14] hover:bg-[#39ff14]/10 hover:border-[#39ff14]/50"}`}
+                className={`p-2 rounded-sm skew-x-[-10deg] transition-all tactile-btn relative group border ${focusMode ? 'animate-pulse' : ''}`}
+                style={{
+                    backgroundColor: focusMode ? colors.accent : 'transparent',
+                    color: focusMode ? colors.background : colors.accent,
+                    borderColor: focusMode ? colors.accent : 'transparent',
+                    boxShadow: focusMode ? `0 0 10px ${colors.accent}` : 'none',
+                }}
                 onMouseEnter={playHover}
                 onClick={(e) => { 
                     e.stopPropagation(); 
@@ -1696,7 +1735,10 @@ export function CanvasEditor() {
                 }}
             >
                 <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] bg-[#39ff14] text-[#0a0b10] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10">
+                <span 
+                    className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold pointer-events-none whitespace-nowrap z-10"
+                    style={{ backgroundColor: colors.accent, color: colors.background }}
+                >
                     FOCUS (F11)
                 </span>
             </button>
@@ -1744,28 +1786,28 @@ export function CanvasEditor() {
            <div style={{ transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${zoom})`, transformOrigin: '0 0', willChange: 'transform', width: '100%', height: '100%', pointerEvents: (activeTool === 'pan' || (isDragging && panStartRef.current)) ? 'none' : 'auto' }} className={(activeTool === 'pan' || (isDragging && panStartRef.current)) ? '' : 'pointer-events-auto'}>
                
                 {/* Connections - needs pointer-events for click-to-delete */}
-                <svg className="absolute top-0 left-0 overflow-visible w-full h-full z-0" style={{ pointerEvents: 'auto' }}>
-                <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#eca013" />
-                    </marker>
-                </defs>
-                {activeCanvas.connections.map(conn => {
-                    const start = activeCanvas.elements.find(el => el.id === conn.from);
-                    const end = activeCanvas.elements.find(el => el.id === conn.to);
-                    if(!start || !end) return null;
-                    if (start.parentId && collapsedFolders.has(start.parentId)) return null;
-                    if (end.parentId && collapsedFolders.has(end.parentId)) return null;
-                    
-                    const sPos = getElementCenter(start);
-                    const ePos = getElementCenter(end);
-                    return (
-                      <g key={conn.id} className="cursor-pointer connection-group" onClick={(e) => { e.stopPropagation(); setPendingDeleteConnection(conn.id); }}>
-                        <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="transparent" strokeWidth="12"/>
-                        <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="#eca013" strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5" className="connection-line"/>
-                        <text x={(sPos.x + ePos.x) / 2} y={(sPos.y + ePos.y) / 2 - 8} fill="#ff5555" fontSize="10" textAnchor="middle" className="connection-delete-text pointer-events-none" fontFamily="monospace">✕ delete</text>
-                      </g>
-                    );
+                 <svg className="absolute top-0 left-0 overflow-visible w-full h-full z-0" style={{ pointerEvents: 'auto' }}>
+                 <defs>
+                     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                     <polygon points="0 0, 10 3.5, 0 7" fill={colors.primary} />
+                     </marker>
+                 </defs>
+                 {activeCanvas.connections.map(conn => {
+                     const start = activeCanvas.elements.find(el => el.id === conn.from);
+                     const end = activeCanvas.elements.find(el => el.id === conn.to);
+                     if(!start || !end) return null;
+                     if (start.parentId && collapsedFolders.has(start.parentId)) return null;
+                     if (end.parentId && collapsedFolders.has(end.parentId)) return null;
+                     
+                     const sPos = getElementCenter(start);
+                     const ePos = getElementCenter(end);
+                     return (
+                       <g key={conn.id} className="cursor-pointer connection-group" onClick={(e) => { e.stopPropagation(); setPendingDeleteConnection(conn.id); }}>
+                         <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke="transparent" strokeWidth="12"/>
+                         <line x1={sPos.x} y1={sPos.y} x2={ePos.x} y2={ePos.y} stroke={colors.primary} strokeWidth="1.5" markerEnd="url(#arrowhead)" strokeDasharray="4 2" opacity="0.5" className="connection-line"/>
+                         <text x={(sPos.x + ePos.x) / 2} y={(sPos.y + ePos.y) / 2 - 8} fill="#ff5555" fontSize="10" textAnchor="middle" className="connection-delete-text pointer-events-none" fontFamily="monospace">✕ delete</text>
+                       </g>
+                     );
                 })}
                 </svg>
 
