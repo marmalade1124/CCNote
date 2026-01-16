@@ -194,10 +194,6 @@ export function CanvasEditor() {
   // Connection FX state
   const [connectionFXList, setConnectionFXList] = useState<{id: string, from: {x: number, y: number}, to: {x: number, y: number}}[]>([]);
   
-  // Boot animation state - track which elements have been "booted"
-  const bootedElementsRef = useRef<Set<string>>(new Set());
-  const [bootingElementId, setBootingElementId] = useState<string | null>(null);
-  
   // Get theme for styled elements
   const { colors } = useTheme();
   
@@ -249,21 +245,7 @@ export function CanvasEditor() {
     return () => window.removeEventListener('connection:created', handleConnectionCreated as EventListener);
   }, []);
 
-  // Boot animation trigger on element selection
-  useEffect(() => {
-    if (selectedElement && !bootedElementsRef.current.has(selectedElement)) {
-      // First time selecting this element - trigger boot animation
-      setBootingElementId(selectedElement);
-      bootedElementsRef.current.add(selectedElement);
-      
-      // End boot animation after delay
-      const timer = setTimeout(() => {
-        setBootingElementId(null);
-      }, 700);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [selectedElement]);
+
   
   // Hover detection for wiki links - RACE CONDITION FIX
   const currentLinkRef = useRef<string | null>(null);
@@ -1861,15 +1843,14 @@ export function CanvasEditor() {
                         <div
                             key={element.id}
                             className={`absolute rounded-lg shadow-lg backdrop-blur-sm transition-all select-none element-container flex flex-col
-                                ${isSelected ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50" : "border border-[#eca013]/30 hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"}
-                                ${(element.type === "card" || element.type === "image") ? "bg-[#0a0b10]/90" : ""}
                                 ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
-                                ${bootingElementId === element.id ? 'boot-flicker' : ''}
                             `}
                             style={{
                                 left: pos.x, top: pos.y, width: element.width, height: element.height,
                                 transform: `rotate(${element.rotation || 0}deg)`,
-                                backgroundColor: element.type === 'sticky' ? element.color : undefined,
+                                backgroundColor: element.type === 'sticky' ? element.color : (element.type === "card" || element.type === "image") ? colors.cardBg : undefined,
+                                border: isSelected ? `1px solid ${colors.accent}` : `1px solid ${colors.cardBorder}`,
+                                boxShadow: isSelected ? `0 0 15px ${colors.accent}40` : undefined,
                                 zIndex: isSelected ? 50 : (element.parentId ? 20 : 10),
                                 pointerEvents: 'auto',
                                 opacity: filterTag && !element.content.includes(filterTag) ? 0.1 : 1,
@@ -1886,46 +1867,19 @@ export function CanvasEditor() {
                                 </div>
                             )}
 
-                            {/* Boot Animation Overlay */}
-                            {bootingElementId === element.id && (
-                                <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden rounded-lg">
-                                    {/* Scan line */}
-                                    <div 
-                                        className="absolute left-0 right-0 h-1 boot-scan-line"
-                                        style={{
-                                            background: `linear-gradient(180deg, transparent, ${colors.primary}, transparent)`,
-                                            boxShadow: `0 0 20px ${colors.primary}, 0 0 40px ${colors.primary}`,
-                                        }}
-                                    />
-                                    {/* Loading overlay */}
-                                    <div 
-                                        className="absolute inset-0 flex items-center justify-center"
-                                        style={{ backgroundColor: `${colors.background}dd` }}
-                                    >
-                                        <div className="text-center">
-                                            <div 
-                                                className="font-mono text-[10px] tracking-widest uppercase animate-pulse"
-                                                style={{ color: colors.primary }}
-                                            >
-                                                <span 
-                                                    className="inline-block w-1.5 h-1.5 rounded-full mr-2 animate-ping" 
-                                                    style={{ backgroundColor: colors.primary }} 
-                                                />
-                                                LOADING...
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
-                                ${(element.type === 'card' || element.type === 'image') ? 'bg-[#eca013]/10 border-b border-[#eca013]/20' : 'bg-black/10'}
-                                ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
-                            `}>
+                            <div 
+                                className={`h-6 w-full flex items-center px-2 cursor-grab active:cursor-grabbing drag-handle rounded-t-lg
+                                    ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
+                                `}
+                                style={{
+                                    backgroundColor: (element.type === 'card' || element.type === 'image') ? `${colors.primary}15` : 'rgba(0,0,0,0.1)',
+                                    borderBottom: (element.type === 'card' || element.type === 'image') ? `1px solid ${colors.primary}30` : undefined,
+                                }}
+                            >
                                 <div className="flex gap-1">
-                                    <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
-                                    <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
-                                    <div className="w-1 h-3 bg-[#eca013]/40 rounded-full"></div>
+                                    <div className="w-1 h-3 rounded-full" style={{ backgroundColor: `${colors.primary}60` }}></div>
+                                    <div className="w-1 h-3 rounded-full" style={{ backgroundColor: `${colors.primary}60` }}></div>
+                                    <div className="w-1 h-3 rounded-full" style={{ backgroundColor: `${colors.primary}60` }}></div>
                                 </div>
                             </div>
 
