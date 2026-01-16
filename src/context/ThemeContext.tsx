@@ -181,11 +181,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const themeConfig = useMemo(() => THEMES[theme], [theme]);
   const colors = useMemo(() => themeConfig.colors, [themeConfig]);
 
-  // Prevent flash of default theme
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme, themeConfig, colors }}>
       {children}

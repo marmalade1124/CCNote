@@ -228,11 +228,21 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Connection FX listener
+  // Connection FX listener - convert world coords to screen coords
   useEffect(() => {
     const handleConnectionCreated = (e: CustomEvent<{from: {x: number, y: number}, to: {x: number, y: number}}>) => {
       const id = `fx-${Date.now()}`;
-      setConnectionFXList(prev => [...prev, { id, ...e.detail }]);
+      
+      // Convert world coordinates to screen coordinates
+      const worldToScreen = (worldX: number, worldY: number) => ({
+        x: (worldX + viewOffsetRef.current.x) * zoomRef.current,
+        y: (worldY + viewOffsetRef.current.y) * zoomRef.current + 56, // +56 for SystemBar height
+      });
+      
+      const screenFrom = worldToScreen(e.detail.from.x, e.detail.from.y);
+      const screenTo = worldToScreen(e.detail.to.x, e.detail.to.y);
+      
+      setConnectionFXList(prev => [...prev, { id, from: screenFrom, to: screenTo }]);
     };
 
     window.addEventListener('connection:created', handleConnectionCreated as EventListener);
@@ -1854,6 +1864,7 @@ export function CanvasEditor() {
                                 ${isSelected ? "border border-[#39ff14] shadow-[0_0_15px_rgba(57,255,20,0.3)] z-50" : "border border-[#eca013]/30 hover:shadow-[0_0_10px_rgba(236,160,19,0.2)]"}
                                 ${(element.type === "card" || element.type === "image") ? "bg-[#0a0b10]/90" : ""}
                                 ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
+                                ${bootingElementId === element.id ? 'boot-flicker' : ''}
                             `}
                             style={{
                                 left: pos.x, top: pos.y, width: element.width, height: element.height,
@@ -1872,6 +1883,38 @@ export function CanvasEditor() {
                                     <span className="bg-[#0a0b10] text-[#39ff14] px-3 py-1 rounded border border-[#39ff14] font-bold text-xs tracking-wider shadow-[0_0_15px_rgba(57,255,20,0.5)]">
                                         ✨ CREATE GROUP
                                     </span>
+                                </div>
+                            )}
+
+                            {/* Boot Animation Overlay */}
+                            {bootingElementId === element.id && (
+                                <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden rounded-lg">
+                                    {/* Scan line */}
+                                    <div 
+                                        className="absolute left-0 right-0 h-1 boot-scan-line"
+                                        style={{
+                                            background: `linear-gradient(180deg, transparent, ${colors.primary}, transparent)`,
+                                            boxShadow: `0 0 20px ${colors.primary}, 0 0 40px ${colors.primary}`,
+                                        }}
+                                    />
+                                    {/* Loading overlay */}
+                                    <div 
+                                        className="absolute inset-0 flex items-center justify-center"
+                                        style={{ backgroundColor: `${colors.background}dd` }}
+                                    >
+                                        <div className="text-center">
+                                            <div 
+                                                className="font-mono text-[10px] tracking-widest uppercase animate-pulse"
+                                                style={{ color: colors.primary }}
+                                            >
+                                                <span 
+                                                    className="inline-block w-1.5 h-1.5 rounded-full mr-2 animate-ping" 
+                                                    style={{ backgroundColor: colors.primary }} 
+                                                />
+                                                LOADING...
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
