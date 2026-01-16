@@ -216,10 +216,11 @@ export function CanvasEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, selectedElement, playConfirm, playClick]);
   
-  // Hover detection for wiki links - STABLE VERSION
+  // Hover detection for wiki links - RACE CONDITION FIX
   const currentLinkRef = useRef<string | null>(null);
   const previewPositionRef = useRef<{ x: number; y: number } | null>(null);
   const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverRequestIdRef = useRef<number>(0); // Unique ID to prevent stale callbacks
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -276,11 +277,17 @@ export function CanvasEditor() {
           currentLinkRef.current = foundLinkName;
           previewPositionRef.current = { x: e.clientX + 20, y: e.clientY + 20 };
           
-          // Show after delay
+          // Generate unique request ID for this hover
+          const requestId = ++hoverRequestIdRef.current;
           const linkToShow = foundLinkName;
-          const pos = previewPositionRef.current;
+          const pos = { ...previewPositionRef.current };
+          
+          // Show after delay - only if this request is still active
           hoverTimeoutRef.current = setTimeout(() => {
-            setHoveredLink({ text: linkToShow, position: pos });
+            // Check if we're still on the same link (prevents race condition)
+            if (hoverRequestIdRef.current === requestId && currentLinkRef.current === linkToShow) {
+              setHoveredLink({ text: linkToShow, position: pos });
+            }
           }, 250);
         }
         return;
@@ -290,6 +297,7 @@ export function CanvasEditor() {
       if (currentLinkRef.current !== null) {
         currentLinkRef.current = null;
         previewPositionRef.current = null;
+        hoverRequestIdRef.current++; // Invalidate any pending requests
         if (hoverTimeoutRef.current) {
           clearTimeout(hoverTimeoutRef.current);
           hoverTimeoutRef.current = null;
