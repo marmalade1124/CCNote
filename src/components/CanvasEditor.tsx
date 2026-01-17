@@ -982,11 +982,36 @@ export function CanvasEditor() {
     return localContent[element.id] ?? element.content;
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  // Handle Paste Event for Images
+  useEffect(() => {
+      const handlePaste = async (e: ClipboardEvent) => {
+          // Ignore if we're typing in an input/textarea
+          const activeElement = document.activeElement;
+          if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+              return;
+          }
 
-      // Optional: limit to 50MB just as a sanity check, though Supabase handles large files
+          const items = e.clipboardData?.items;
+          if (!items) return;
+
+          for (const item of items) {
+              if (item.type.startsWith('image/')) {
+                  e.preventDefault();
+                  const file = item.getAsFile();
+                  if (file) {
+                      await uploadImageFile(file);
+                  }
+                  break;
+              }
+          }
+      };
+
+      document.addEventListener('paste', handlePaste);
+      return () => document.removeEventListener('paste', handlePaste);
+  }, [activeCanvas?.id, canvasEl, viewOffset, zoom, addElement]);
+
+  // Shared Image Upload Logic (used by file input and paste)
+  const uploadImageFile = async (file: File) => {
       if (file.size > 50 * 1024 * 1024) { 
           alert("Image is too large (Max 50MB).");
           return;
@@ -998,20 +1023,18 @@ export function CanvasEditor() {
       }
 
       try {
-          setIsUploading(true); // START UPLOAD INDICATOR
+          setIsUploading(true);
           setUploadProgress(0);
           
-          // Simulated progress interval
           const progressInterval = setInterval(() => {
              setUploadProgress(prev => {
-                 if (prev >= 95) return prev; // Hold at 95%
-                 // Decaying increment: smaller steps as we get closer to 95
+                 if (prev >= 95) return prev;
                  const remaining = 95 - prev;
                  return prev + (remaining * 0.1); 
              });
           }, 200);
 
-          const fileExt = file.name.split('.').pop();
+          const fileExt = file.name?.split('.').pop() || 'png';
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
           const filePath = `${activeCanvas.id}/${fileName}`;
           
@@ -1019,22 +1042,23 @@ export function CanvasEditor() {
               .from('images')
               .upload(filePath, file);
 
-          clearInterval(progressInterval); // Stop simulation
+          clearInterval(progressInterval);
 
           if (uploadError) {
               console.error('Upload error:', uploadError);
               alert('Failed to upload image: ' + uploadError.message);
+              setIsUploading(false);
               return;
           }
           
-          setUploadProgress(100); // Complete
+          setUploadProgress(100);
 
           const { data: { publicUrl } } = supabase.storage
               .from('images')
               .getPublicUrl(filePath);
 
-          if (publicUrl && activeCanvas) {
-              const rect = canvasEl!.getBoundingClientRect();
+          if (publicUrl && activeCanvas && canvasEl) {
+              const rect = canvasEl.getBoundingClientRect();
               const screenCenterX = rect.width / 2;
               const screenCenterY = rect.height / 2;
               
@@ -1044,7 +1068,6 @@ export function CanvasEditor() {
               const img = new Image();
               img.src = publicUrl;
               img.onload = async () => {
-                   // Scale down giant images to reasonable initial node size while keeping aspect ratio
                    const MAX_INITIAL_WIDTH = 500;
                    let width = img.width;
                    let height = img.height;
@@ -1061,24 +1084,28 @@ export function CanvasEditor() {
                       y: worldY - (height / 2),
                       width: width,
                       height: height,
-                      content: serializeImageContent(publicUrl, "Uploaded Image", "Description..."),
+                      content: serializeImageContent(publicUrl, "Pasted Image", ""),
                       rotation: 0
                   });
               };
-              
-              if (fileInputRef.current) fileInputRef.current.value = "";
           }
 
       } catch (err) {
           console.error('Unexpected error uploading:', err);
           alert("An error occurred during upload.");
       } finally {
-        // Short delay to let the user see 100%
-        setTimeout(() => {
-            setIsUploading(false); // STOP UPLOAD INDICATOR
-            setUploadProgress(0);
-        }, 500);
+          setTimeout(() => {
+              setIsUploading(false);
+              setUploadProgress(0);
+          }, 500);
       }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await uploadImageFile(file);
+      if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const reorganizeLayout = async (folder: CanvasElement, currentChildren: CanvasElement[], collapsedOverride?: boolean) => {
