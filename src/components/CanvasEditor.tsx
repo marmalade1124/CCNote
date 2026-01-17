@@ -84,6 +84,35 @@ function serializeImageContent(url: string, title: string, description: string):
     return JSON.stringify({ url, title, description });
 }
 
+// Checklist Content Parser
+interface ChecklistItem {
+    id: string;
+    text: string;
+    done: boolean;
+}
+
+interface ChecklistContent {
+    title: string;
+    items: ChecklistItem[];
+}
+
+function parseChecklistContent(content: string): ChecklistContent {
+    try {
+        const parsed = JSON.parse(content);
+        if (typeof parsed === 'object' && parsed !== null) {
+            return {
+                title: parsed.title || "Checklist",
+                items: Array.isArray(parsed.items) ? parsed.items : []
+            };
+        }
+    } catch(e) {}
+    return { title: "Checklist", items: [] };
+}
+
+function serializeChecklistContent(title: string, items: ChecklistItem[]): string {
+    return JSON.stringify({ title, items });
+}
+
 function isOverlapping(a: {x: number, y: number, width: number, height: number}, b: {x: number, y: number, width: number, height: number}) {
   return (
     a.x < b.x + b.width &&
@@ -1189,6 +1218,13 @@ export function CanvasEditor() {
       playConfirm();
       addElement({ type: "text", x, y, width: 200, height: 40, content: ">_ TYPE_HERE", rotation: 0 });
       setActiveTool("select");
+    } else if (activeTool === "checklist") {
+      playConfirm();
+      const initialContent = serializeChecklistContent("Todo List", [
+        { id: crypto.randomUUID(), text: "First task", done: false },
+      ]);
+      addElement({ type: "checklist", x, y, width: 280, height: 220, content: initialContent, rotation: 0 });
+      setActiveTool("select");
     } else {
       setSelectedElement(null);
     }
@@ -1636,7 +1672,7 @@ export function CanvasEditor() {
 
          <div className="flex items-center gap-1">
             <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
-            {['select', 'pan', 'connect', 'card', 'sticky', 'image'].map(tool => (
+            {['select', 'pan', 'connect', 'card', 'sticky', 'checklist', 'image'].map(tool => (
                 <button 
                     key={tool}
                     title={tool.toUpperCase()}
@@ -1665,6 +1701,7 @@ export function CanvasEditor() {
                         connect: 'hub',
                         card: 'crop_landscape',
                         sticky: 'sticky_note_2',
+                        checklist: 'checklist',
                         image: 'image'
                     }[tool as string]}</span>
                     
@@ -2086,10 +2123,124 @@ export function CanvasEditor() {
                                     )
 
                                 )}
+
+                                {/* === CHECKLIST CARD === */}
+                                {element.type === "checklist" && (() => {
+                                    const checklistData = parseChecklistContent(getElementContent(element));
+                                    const doneCount = checklistData.items.filter(i => i.done).length;
+                                    const totalCount = checklistData.items.length;
+                                    const progress = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
+
+                                    const toggleItem = (itemId: string) => {
+                                        const newItems = checklistData.items.map(item =>
+                                            item.id === itemId ? { ...item, done: !item.done } : item
+                                        );
+                                        handleContentChange(element.id, serializeChecklistContent(checklistData.title, newItems));
+                                    };
+
+                                    const addItem = () => {
+                                        const newItem: ChecklistItem = {
+                                            id: crypto.randomUUID(),
+                                            text: "",
+                                            done: false
+                                        };
+                                        handleContentChange(element.id, serializeChecklistContent(checklistData.title, [...checklistData.items, newItem]));
+                                    };
+
+                                    const updateItemText = (itemId: string, text: string) => {
+                                        const newItems = checklistData.items.map(item =>
+                                            item.id === itemId ? { ...item, text } : item
+                                        );
+                                        handleContentChange(element.id, serializeChecklistContent(checklistData.title, newItems));
+                                    };
+
+                                    const removeItem = (itemId: string) => {
+                                        const newItems = checklistData.items.filter(item => item.id !== itemId);
+                                        handleContentChange(element.id, serializeChecklistContent(checklistData.title, newItems));
+                                    };
+
+                                    return (
+                                        <div className="flex flex-col gap-2 h-full">
+                                            {/* Title */}
+                                            <input
+                                                className="w-full bg-transparent font-bold text-sm outline-none border-b pb-1 tracking-wide uppercase font-display placeholder-opacity-30"
+                                                style={{ color: colors.primary, borderColor: `${colors.primary}30` }}
+                                                value={checklistData.title}
+                                                onChange={(e) => handleContentChange(element.id, serializeChecklistContent(e.target.value, checklistData.items))}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                placeholder="CHECKLIST_TITLE"
+                                            />
+
+                                            {/* Progress Bar */}
+                                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.primary}20` }}>
+                                                <div 
+                                                    className="h-full rounded-full transition-all duration-300"
+                                                    style={{ width: `${progress}%`, backgroundColor: colors.accent }}
+                                                />
+                                            </div>
+                                            <div className="text-[10px] font-mono" style={{ color: colors.textSecondary }}>
+                                                {doneCount}/{totalCount} complete
+                                            </div>
+
+                                            {/* Items */}
+                                            <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+                                                {checklistData.items.map((item) => (
+                                                    <div 
+                                                        key={item.id} 
+                                                        className="flex items-center gap-2 group p-1 rounded transition-colors"
+                                                        style={{ backgroundColor: item.done ? `${colors.accent}10` : 'transparent' }}
+                                                    >
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}
+                                                            onMouseDown={(e) => e.stopPropagation()}
+                                                            className="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all"
+                                                            style={{
+                                                                borderColor: item.done ? colors.accent : `${colors.primary}50`,
+                                                                backgroundColor: item.done ? colors.accent : 'transparent',
+                                                            }}
+                                                        >
+                                                            {item.done && <span className="text-[10px]" style={{ color: colors.background }}>✓</span>}
+                                                        </button>
+                                                        <input
+                                                            className={`flex-1 bg-transparent text-xs outline-none font-mono ${item.done ? 'line-through opacity-50' : ''}`}
+                                                            style={{ color: colors.primary }}
+                                                            value={item.text}
+                                                            onChange={(e) => updateItemText(item.id, e.target.value)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onMouseDown={(e) => e.stopPropagation()}
+                                                            placeholder="New task..."
+                                                        />
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
+                                                            onMouseDown={(e) => e.stopPropagation()}
+                                                            className="opacity-0 group-hover:opacity-100 text-red-500 text-xs transition-opacity"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Add Item Button */}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); addItem(); }}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                className="w-full text-xs py-1 rounded border border-dashed transition-colors flex items-center justify-center gap-1"
+                                                style={{ 
+                                                    color: colors.textSecondary, 
+                                                    borderColor: `${colors.primary}30`,
+                                                }}
+                                            >
+                                                <span>+</span> Add Item
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                             
                             {/* Resize Handle (Global for Resizable Types) */}
-                            {(element.type === 'card' || element.type === 'image') && (
+                            {(element.type === 'card' || element.type === 'image' || element.type === 'checklist') && (
                                 <div 
                                     className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-end justify-end p-1 z-50 opacity-50 hover:opacity-100 transition-opacity"
                                     onMouseDown={(e) => handleResizeStart(e, element.id, element.width, element.height)}

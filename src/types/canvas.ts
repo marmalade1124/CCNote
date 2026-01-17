@@ -31,7 +31,7 @@ export interface DbConnection {
 }
 
 // Application types
-export type CanvasElementType = 'card' | 'sticky' | 'text' | 'folder' | 'image';
+export type CanvasElementType = 'card' | 'sticky' | 'text' | 'folder' | 'image' | 'checklist';
 export type ElementType = CanvasElementType;
 
 export interface CanvasElement {
@@ -53,7 +53,7 @@ export interface Connection {
   to: string;
 }
 
-export type CanvasTool = "select" | "card" | "sticky" | "text" | "connect" | "folder" | "image" | "pan";
+export type CanvasTool = "select" | "card" | "sticky" | "text" | "connect" | "folder" | "image" | "checklist" | "pan";
 
 export interface Canvas {
   id: string;
