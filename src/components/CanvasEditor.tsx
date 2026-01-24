@@ -1966,7 +1966,7 @@ export function CanvasEditor() {
                     return (
                         <div
                             key={element.id}
-                            className={`absolute rounded-lg shadow-lg backdrop-blur-sm transition-all select-none element-container flex flex-col
+                            className={`absolute rounded-lg shadow-lg backdrop-blur-sm select-none element-container flex flex-col
                                 ${activeTool === 'connect' ? '!cursor-crosshair' : ''}
                             `}
                             style={{
@@ -1979,7 +1979,7 @@ export function CanvasEditor() {
                                 pointerEvents: 'auto',
                                 opacity: filterTag && !element.content.includes(filterTag) ? 0.1 : 1,
                                 filter: filterTag && !element.content.includes(filterTag) ? 'grayscale(100%) blur(1px)' : 'none',
-                                transition: 'all 0.2s ease-out, opacity 0.3s ease-in-out, filter 0.3s'
+                                transition: 'opacity 0.2s, filter 0.2s, background-color 0.2s, box-shadow 0.2s, border-color 0.2s'
                             }}
                             onMouseDown={(e) => handleElementMouseDown(e, element)}
                         >
